@@ -46,6 +46,7 @@ export function OnboardingFlow({ user }: { user: AuthUser }) {
       emailNotifications: true,
       alertNotifications: true
     });
+    await fetch("/api/auth/refresh", { method: "POST" });
     toast.success("Configuracion inicial completada");
     router.replace(getRoleDashboard(user.role) as Route);
     router.refresh();

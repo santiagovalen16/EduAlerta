@@ -1,5 +1,5 @@
-import { RoleDashboard } from "@/components/shared/role-dashboard";
+import { RoleWorkspace } from "@/components/dashboard/role-workspace";
 
 export default function AdminDashboardPage() {
-  return <RoleDashboard expectedRole="SUPER_ADMIN" />;
+  return <RoleWorkspace kind="admin" />;
 }

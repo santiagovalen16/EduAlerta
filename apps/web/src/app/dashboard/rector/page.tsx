@@ -1,5 +1,5 @@
-import { RoleDashboard } from "@/components/shared/role-dashboard";
+import { RoleWorkspace } from "@/components/dashboard/role-workspace";
 
 export default function RectorDashboardPage() {
-  return <RoleDashboard expectedRole="RECTOR" />;
+  return <RoleWorkspace kind="rector" />;
 }

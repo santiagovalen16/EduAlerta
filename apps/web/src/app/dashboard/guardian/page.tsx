@@ -1,5 +1,5 @@
-import { RoleDashboard } from "@/components/shared/role-dashboard";
+import { RoleWorkspace } from "@/components/dashboard/role-workspace";
 
 export default function GuardianDashboardPage() {
-  return <RoleDashboard expectedRole="ACUDIENTE" />;
+  return <RoleWorkspace kind="guardian" />;
 }

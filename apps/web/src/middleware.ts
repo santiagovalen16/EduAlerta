@@ -50,14 +50,32 @@ export async function middleware(request: NextRequest) {
   }
 
   const payload = decodeJwtPayload<TokenPayload>(token);
-  const role = payload?.role;
-  const requiredRoles = requiredRolesForPath(pathname);
+  let currentPayload = payload;
 
-  if (pathname !== "/onboarding" && !payload?.onboardingCompletedAt) {
+  if (!currentPayload?.onboardingCompletedAt && refreshToken) {
+    const refreshed = await refreshSession(refreshToken, request);
+    if (refreshed) {
+      token = refreshed.accessToken;
+      currentPayload = decodeJwtPayload<TokenPayload>(token);
+      response.cookies.set(ACCESS_TOKEN_COOKIE, refreshed.accessToken, accessCookieOptions);
+      response.cookies.set(REFRESH_TOKEN_COOKIE, refreshed.refreshToken, refreshCookieOptions);
+    }
+  }
+
+  const role = currentPayload?.role;
+  const requiredRoles = requiredRolesForPath(pathname);
+  let onboardingCompleted = Boolean(currentPayload?.onboardingCompletedAt);
+
+  if (!onboardingCompleted) {
+    const status = await fetchCurrentUserStatus(token);
+    onboardingCompleted = Boolean(status?.onboardingCompletedAt);
+  }
+
+  if (pathname !== "/onboarding" && !onboardingCompleted) {
     return NextResponse.redirect(new URL("/onboarding", request.url));
   }
 
-  if (pathname === "/onboarding" && payload?.onboardingCompletedAt) {
+  if (pathname === "/onboarding" && onboardingCompleted) {
     return NextResponse.redirect(new URL(getRoleDashboard(role), request.url));
   }
 
@@ -70,6 +88,18 @@ export async function middleware(request: NextRequest) {
   }
 
   return response;
+}
+
+async function fetchCurrentUserStatus(accessToken: string) {
+  try {
+    const response = await fetch(`${API_URL}/api/auth/me`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    if (!response.ok) return null;
+    return (await response.json()) as { onboardingCompletedAt: string | null };
+  } catch {
+    return null;
+  }
 }
 
 async function refreshSession(refreshToken: string, request: NextRequest) {

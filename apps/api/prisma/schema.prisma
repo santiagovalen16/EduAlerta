@@ -1,0 +1,652 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoleKey {
+  SUPER_ADMIN
+  SECRETARIA
+  RECTOR
+  COORDINADOR
+  DOCENTE
+  ACUDIENTE
+  ESTUDIANTE
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AlertType {
+  ATTENDANCE
+  ACADEMIC
+  BEHAVIOR
+  FAMILY
+}
+
+enum AlertStatus {
+  NEW
+  IN_REVIEW
+  ESCALATED
+  CLOSED
+}
+
+enum AlertPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum MonitoringCaseStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum IncidentType {
+  BEHAVIOR
+  WELLBEING
+  FAMILY_CONTACT
+  ACADEMIC_SUPPORT
+}
+
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  ABSENT
+  EXCUSED
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SMS
+  WHATSAPP
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  READ
+  FAILED
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+enum AuditAction {
+  LOGIN
+  LOGOUT
+  TOKEN_REFRESHED
+  PASSWORD_RESET_REQUESTED
+  PASSWORD_RESET_COMPLETED
+  USER_REGISTERED
+  INVITATION_CREATED
+  INVITATION_ACCEPTED
+  INVITATION_REVOKED
+  ALERT_CREATED
+  ALERT_UPDATED
+  ALERT_DELETED
+  STUDENT_CREATED
+  STUDENT_UPDATED
+  STUDENT_DELETED
+  REPORT_EXPORTED
+  USER_ROLE_CHANGED
+}
+
+model Role {
+  id          String           @id @default(uuid())
+  key         RoleKey          @unique
+  name        String
+  description String?
+  users       User[]
+  permissions RolePermission[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @default(now()) @updatedAt
+  deletedAt   DateTime?
+}
+
+model Permission {
+  id          String           @id @default(uuid())
+  key         String           @unique
+  description String
+  roles       RolePermission[]
+  createdAt   DateTime         @default(now())
+  deletedAt   DateTime?
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+}
+
+model User {
+  id                      String                   @id @default(uuid())
+  email                   String                   @unique
+  name                    String
+  phone                   String?
+  avatarUrl               String?
+  position                String?
+  passwordHash            String
+  emailVerifiedAt         DateTime?
+  onboardingCompletedAt   DateTime?
+  preferences             Json?
+  roleId                  String
+  role                    Role                     @relation(fields: [roleId], references: [id])
+  institutionId           String?
+  institution             Institution?             @relation(fields: [institutionId], references: [id])
+  institutionMemberships  InstitutionUser[]
+  teacherProfile          Teacher?
+  guardianProfile         Guardian?
+  coordinatorProfile      Coordinator?
+  secretaryProfile        Secretary?
+  createdAlerts           Alert[]                  @relation("AlertCreatedBy")
+  sessions                Session[]
+  invitationsSent         Invitation[]             @relation("InvitationInvitedBy")
+  passwordResetTokens     PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  auditLogs               AuditLog[]               @relation("AuditActor")
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @default(now()) @updatedAt
+  disabledAt              DateTime?
+  deletedAt               DateTime?
+
+  @@index([roleId])
+  @@index([institutionId])
+}
+
+model Session {
+  id               String    @id @default(uuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokenHash String
+  userAgent        String?
+  ipAddress        String?
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @default(now()) @updatedAt
+  deletedAt        DateTime?
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([revokedAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Invitation {
+  id            String           @id @default(uuid())
+  email         String
+  roleKey       RoleKey
+  institutionId String?
+  institution   Institution?     @relation(fields: [institutionId], references: [id], onDelete: SetNull)
+  invitedById   String?
+  invitedBy     User?            @relation("InvitationInvitedBy", fields: [invitedById], references: [id], onDelete: SetNull)
+  tokenHash     String           @unique
+  status        InvitationStatus @default(PENDING)
+  expiresAt     DateTime
+  acceptedAt    DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @default(now()) @updatedAt
+  deletedAt     DateTime?
+
+  @@index([email])
+  @@index([institutionId])
+  @@index([status])
+}
+
+model Department {
+  id             String         @id @default(uuid())
+  name           String         @unique
+  daneCode       String?        @unique
+  municipalities Municipality[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @default(now()) @updatedAt
+  deletedAt      DateTime?
+}
+
+model Municipality {
+  id           String        @id @default(uuid())
+  name         String        @unique
+  daneCode     String?       @unique
+  latitude     Float?
+  longitude    Float?
+  departmentId String?
+  department   Department?   @relation(fields: [departmentId], references: [id])
+  institutions Institution[]
+  secretaries  Secretary[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @default(now()) @updatedAt
+  deletedAt    DateTime?
+
+  @@index([departmentId])
+}
+
+model Institution {
+  id              String             @id @default(uuid())
+  name            String
+  daneCode        String?            @unique
+  address         String?
+  municipalityId  String
+  municipality    Municipality       @relation(fields: [municipalityId], references: [id])
+  users           User[]
+  memberships     InstitutionUser[]
+  teachers        Teacher[]
+  guardians       Guardian[]
+  coordinators    Coordinator[]
+  secretaries     Secretary[]
+  students        Student[]
+  courses         Course[]
+  grades          Grade[]
+  academicPeriods AcademicPeriod[]
+  invitations     Invitation[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @default(now()) @updatedAt
+  deletedAt       DateTime?
+
+  @@index([municipalityId])
+}
+
+model InstitutionUser {
+  id            String      @id @default(uuid())
+  institutionId String
+  userId        String
+  roleKey       RoleKey
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @default(now()) @updatedAt
+  deletedAt     DateTime?
+
+  @@unique([institutionId, userId, roleKey])
+  @@index([userId])
+  @@index([institutionId])
+}
+
+model Grade {
+  id            String      @id @default(uuid())
+  name          String
+  level         String?
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  courses       Course[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @default(now()) @updatedAt
+  deletedAt     DateTime?
+
+  @@unique([institutionId, name])
+  @@index([institutionId])
+}
+
+model AcademicPeriod {
+  id            String      @id @default(uuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  name          String
+  startsAt      DateTime
+  endsAt        DateTime
+  isActive      Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @default(now()) @updatedAt
+  deletedAt     DateTime?
+
+  @@unique([institutionId, name])
+  @@index([institutionId])
+  @@index([isActive])
+}
+
+model Teacher {
+  id             String          @id @default(uuid())
+  userId         String          @unique
+  user           User            @relation(fields: [userId], references: [id])
+  institutionId  String
+  institution    Institution     @relation(fields: [institutionId], references: [id])
+  specialty      String?
+  courses        Course[]        @relation("CourseTeacher")
+  teacherCourses TeacherCourse[]
+  alerts         Alert[]
+  incidents      Incident[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @default(now()) @updatedAt
+  deletedAt      DateTime?
+
+  @@index([institutionId])
+}
+
+model Coordinator {
+  id            String      @id @default(uuid())
+  userId        String      @unique
+  user          User        @relation(fields: [userId], references: [id])
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id])
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @default(now()) @updatedAt
+  deletedAt     DateTime?
+
+  @@index([institutionId])
+}
+
+model Secretary {
+  id             String        @id @default(uuid())
+  userId         String        @unique
+  user           User          @relation(fields: [userId], references: [id])
+  institutionId  String?
+  institution    Institution?  @relation(fields: [institutionId], references: [id])
+  municipalityId String?
+  municipality   Municipality? @relation(fields: [municipalityId], references: [id])
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @default(now()) @updatedAt
+  deletedAt      DateTime?
+
+  @@index([institutionId])
+  @@index([municipalityId])
+}
+
+model Guardian {
+  id            String            @id @default(uuid())
+  userId        String            @unique
+  user          User              @relation(fields: [userId], references: [id])
+  institutionId String
+  institution   Institution       @relation(fields: [institutionId], references: [id])
+  phone         String?
+  relationship  String?
+  students      StudentGuardian[]
+  notifications Notification[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @default(now()) @updatedAt
+  deletedAt     DateTime?
+
+  @@index([institutionId])
+}
+
+model Course {
+  id             String          @id @default(uuid())
+  name           String
+  grade          String
+  academicYear   Int
+  gradeId        String?
+  gradeModel     Grade?          @relation(fields: [gradeId], references: [id], onDelete: SetNull)
+  institutionId  String
+  institution    Institution     @relation(fields: [institutionId], references: [id])
+  teacherId      String?
+  teacher        Teacher?        @relation("CourseTeacher", fields: [teacherId], references: [id])
+  teacherCourses TeacherCourse[]
+  students       Student[]
+  attendance     Attendance[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @default(now()) @updatedAt
+  deletedAt      DateTime?
+
+  @@unique([institutionId, name, academicYear])
+  @@index([institutionId])
+  @@index([teacherId])
+  @@index([gradeId])
+}
+
+model TeacherCourse {
+  teacherId String
+  courseId  String
+  teacher   Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  deletedAt DateTime?
+
+  @@id([teacherId, courseId])
+  @@index([courseId])
+}
+
+model Student {
+  id              String            @id @default(uuid())
+  firstName       String
+  lastName        String
+  documentNumber  String?           @unique
+  grade           String
+  riskLevel       RiskLevel         @default(LOW)
+  institutionId   String
+  institution     Institution       @relation(fields: [institutionId], references: [id])
+  courseId        String?
+  course          Course?           @relation(fields: [courseId], references: [id])
+  alerts          Alert[]
+  attendance      Attendance[]
+  incidents       Incident[]
+  academicRecords AcademicRecord[]
+  monitoringCases MonitoringCase[]
+  observations    Observation[]
+  guardians       StudentGuardian[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @default(now()) @updatedAt
+  deletedAt       DateTime?
+
+  @@index([institutionId])
+  @@index([courseId])
+  @@index([riskLevel])
+  @@index([lastName, firstName])
+}
+
+model StudentGuardian {
+  guardianId String
+  studentId  String
+  guardian   Guardian @relation(fields: [guardianId], references: [id], onDelete: Cascade)
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  deletedAt  DateTime?
+
+  @@id([guardianId, studentId])
+  @@index([studentId])
+}
+
+model Attendance {
+  id        String           @id @default(uuid())
+  studentId String
+  student   Student          @relation(fields: [studentId], references: [id])
+  courseId  String
+  course    Course           @relation(fields: [courseId], references: [id])
+  date      DateTime
+  status    AttendanceStatus
+  notes     String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @default(now()) @updatedAt
+  deletedAt DateTime?
+
+  @@unique([studentId, courseId, date])
+  @@index([courseId, date])
+  @@index([studentId, date])
+  @@index([status])
+}
+
+model AcademicRecord {
+  id         String   @id @default(uuid())
+  studentId  String
+  student    Student  @relation(fields: [studentId], references: [id])
+  courseId   String?
+  subject    String
+  period     String
+  score      Float
+  maxScore   Float    @default(5)
+  recordedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+  deletedAt  DateTime?
+
+  @@index([studentId])
+  @@index([courseId])
+  @@index([subject])
+  @@index([recordedAt])
+}
+
+model MonitoringCase {
+  id         String               @id @default(uuid())
+  studentId  String
+  student    Student              @relation(fields: [studentId], references: [id])
+  openedById String?
+  status     MonitoringCaseStatus @default(OPEN)
+  riskLevel  RiskLevel
+  summary    String
+  openedAt   DateTime             @default(now())
+  closedAt   DateTime?
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @default(now()) @updatedAt
+  deletedAt  DateTime?
+
+  @@index([studentId])
+  @@index([status])
+  @@index([riskLevel])
+  @@index([openedAt])
+}
+
+model Observation {
+  id          String   @id @default(uuid())
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id])
+  authorId    String?
+  description String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+  deletedAt   DateTime?
+
+  @@index([studentId])
+  @@index([authorId])
+}
+
+model Incident {
+  id          String       @id @default(uuid())
+  studentId   String
+  student     Student      @relation(fields: [studentId], references: [id])
+  teacherId   String?
+  teacher     Teacher?     @relation(fields: [teacherId], references: [id])
+  type        IncidentType
+  description String
+  occurredAt  DateTime
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @default(now()) @updatedAt
+  deletedAt   DateTime?
+
+  @@index([studentId])
+  @@index([teacherId])
+  @@index([type])
+  @@index([occurredAt])
+}
+
+model Alert {
+  id                String        @id @default(uuid())
+  clientGeneratedId String        @unique
+  studentId         String
+  student           Student       @relation(fields: [studentId], references: [id])
+  teacherId         String?
+  teacher           Teacher?      @relation(fields: [teacherId], references: [id])
+  createdById       String
+  createdBy         User          @relation("AlertCreatedBy", fields: [createdById], references: [id])
+  type              AlertType
+  status            AlertStatus   @default(NEW)
+  priority          AlertPriority @default(MEDIUM)
+  description       String
+  comments          AlertComment[]
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @default(now()) @updatedAt
+  closedAt          DateTime?
+  deletedAt         DateTime?
+
+  @@index([studentId])
+  @@index([teacherId])
+  @@index([createdById])
+  @@index([status])
+  @@index([priority])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model AlertComment {
+  id        String   @id @default(uuid())
+  alertId   String
+  alert     Alert    @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  authorId  String?
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  deletedAt DateTime?
+
+  @@index([alertId])
+  @@index([authorId])
+}
+
+model Notification {
+  id         String              @id @default(uuid())
+  userId     String?
+  guardianId String?
+  guardian   Guardian?           @relation(fields: [guardianId], references: [id])
+  alertId    String?
+  title      String
+  body       String
+  channel    NotificationChannel @default(IN_APP)
+  status     NotificationStatus  @default(PENDING)
+  readAt     DateTime?
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @default(now()) @updatedAt
+  deletedAt  DateTime?
+
+  @@index([userId])
+  @@index([guardianId])
+  @@index([alertId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id         String      @id @default(uuid())
+  actorId    String?
+  actor      User?       @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  action     AuditAction
+  entityType String
+  entityId   String?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime    @default(now())
+
+  @@index([actorId])
+  @@index([action])
+  @@index([createdAt])
+}

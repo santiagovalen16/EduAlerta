@@ -1,0 +1,24 @@
+{
+  "name": "edualerta",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Plataforma SaaS para deteccion temprana de desercion y repitencia escolar en Sabana Centro.",
+  "packageManager": "pnpm@10.10.0",
+  "engines": {
+    "node": ">=22 <25",
+    "pnpm": ">=10.10 <11"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @edualerta/web --filter @edualerta/api dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "format": "prettier --write .",
+    "db:migrate": "pnpm --filter @edualerta/api prisma:migrate",
+    "db:seed": "pnpm --filter @edualerta/api prisma:seed"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3",
+    "typescript": "^5.6.3"
+  }
+}

@@ -62,6 +62,7 @@ export class AuthService {
         email: user.email,
         role: user.role.key,
         permissions: this.permissions(user),
+        institutionId: user.institution?.id ?? null,
         sessionId,
         onboardingCompletedAt: user.onboardingCompletedAt?.toISOString() ?? null
       },

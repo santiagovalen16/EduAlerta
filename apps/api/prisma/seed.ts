@@ -24,7 +24,17 @@ const permissions = [
   ["dashboard:institution:read", "Leer dashboard institucional"],
   ["dashboard:territory:read", "Leer dashboard territorial"],
   ["report:export", "Exportar reportes"],
-  ["user:manage", "Gestionar usuarios"]
+  ["user:manage", "Gestionar usuarios"],
+  ["case:create", "Crear casos de seguimiento"],
+  ["case:read", "Leer casos de seguimiento"],
+  ["case:update", "Actualizar casos de seguimiento"],
+  ["attendance:read", "Leer asistencia"],
+  ["attendance:write", "Registrar asistencia"],
+  ["observation:read", "Leer observaciones"],
+  ["observation:create", "Crear observaciones"],
+  ["incident:read", "Leer incidentes"],
+  ["incident:create", "Crear incidentes"],
+  ["rule:evaluate", "Ejecutar motor de alertas"]
 ] as const;
 
 const rolePermissions: Record<RoleKey, string[]> = {
@@ -39,7 +49,16 @@ const rolePermissions: Record<RoleKey, string[]> = {
     "student:delete",
     "dashboard:institution:read",
     "report:export",
-    "user:manage"
+    "user:manage",
+    "case:create",
+    "case:read",
+    "case:update",
+    "attendance:read",
+    "observation:read",
+    "observation:create",
+    "incident:read",
+    "incident:create",
+    "rule:evaluate"
   ],
   COORDINADOR: [
     "alert:create",
@@ -47,12 +66,20 @@ const rolePermissions: Record<RoleKey, string[]> = {
     "alert:update",
     "student:read",
     "student:update",
-    "dashboard:institution:read"
+    "dashboard:institution:read",
+    "case:create",
+    "case:read",
+    "case:update",
+    "attendance:read",
+    "observation:read",
+    "observation:create",
+    "incident:read",
+    "incident:create"
   ],
-  DOCENTE: ["alert:create", "alert:read", "student:read"],
-  SECRETARIA: ["student:read", "dashboard:territory:read", "report:export"],
-  ACUDIENTE: ["alert:read"],
-  ESTUDIANTE: ["student:read"]
+  DOCENTE: ["alert:create", "alert:read", "student:read", "attendance:read", "attendance:write", "observation:read", "observation:create", "incident:read", "incident:create", "case:read"],
+  SECRETARIA: ["student:read", "dashboard:territory:read", "report:export", "case:read", "attendance:read", "observation:read", "incident:read"],
+  ACUDIENTE: ["alert:read", "case:read", "attendance:read", "observation:read"],
+  ESTUDIANTE: ["student:read", "alert:read", "attendance:read", "observation:read"]
 };
 
 async function upsertUser(input: {
@@ -429,7 +456,9 @@ async function main() {
     update: {
       studentId: students[0].id,
       teacherId: teacherOrientation.id,
-      type: IncidentType.FAMILY_CONTACT,
+      type: IncidentType.COEXISTENCE,
+      institutionId: students[0].institutionId,
+      title: "Seguimiento de convivencia familiar",
       description: "Se programa cita de orientacion con acudiente por ausentismo recurrente.",
       occurredAt: new Date("2026-05-08T14:30:00.000Z"),
       deletedAt: null
@@ -438,7 +467,9 @@ async function main() {
       id: "00000000-0000-4000-9000-000000000001",
       studentId: students[0].id,
       teacherId: teacherOrientation.id,
-      type: IncidentType.FAMILY_CONTACT,
+      type: IncidentType.COEXISTENCE,
+      institutionId: students[0].institutionId,
+      title: "Seguimiento de convivencia familiar",
       description: "Se programa cita de orientacion con acudiente por ausentismo recurrente.",
       occurredAt: new Date("2026-05-08T14:30:00.000Z")
     }
@@ -468,7 +499,10 @@ async function main() {
       await prisma.monitoringCase.upsert({
         where: { id: `00000000-0000-6000-8000-${student.documentNumber?.slice(-6)}0` },
         update: {
-          status: student.riskLevel === RiskLevel.CRITICAL ? MonitoringCaseStatus.IN_PROGRESS : MonitoringCaseStatus.OPEN,
+          institutionId: student.institutionId,
+          title: `Caso de seguimiento ${student.firstName} ${student.lastName}`,
+          status: student.riskLevel === RiskLevel.CRITICAL ? MonitoringCaseStatus.INTERVENTION : MonitoringCaseStatus.IN_REVIEW,
+          priority: student.riskLevel === RiskLevel.CRITICAL ? AlertPriority.CRITICAL : AlertPriority.HIGH,
           riskLevel: student.riskLevel,
           summary: `Plan de acompanamiento activo para estudiante con riesgo ${student.riskLevel.toLowerCase()}.`,
           deletedAt: null
@@ -477,7 +511,10 @@ async function main() {
           id: `00000000-0000-6000-8000-${student.documentNumber?.slice(-6)}0`,
           studentId: student.id,
           openedById: directivo.id,
-          status: student.riskLevel === RiskLevel.CRITICAL ? MonitoringCaseStatus.IN_PROGRESS : MonitoringCaseStatus.OPEN,
+          institutionId: student.institutionId,
+          title: `Caso de seguimiento ${student.firstName} ${student.lastName}`,
+          status: student.riskLevel === RiskLevel.CRITICAL ? MonitoringCaseStatus.INTERVENTION : MonitoringCaseStatus.IN_REVIEW,
+          priority: student.riskLevel === RiskLevel.CRITICAL ? AlertPriority.CRITICAL : AlertPriority.HIGH,
           riskLevel: student.riskLevel,
           summary: `Plan de acompanamiento activo para estudiante con riesgo ${student.riskLevel.toLowerCase()}.`
         }

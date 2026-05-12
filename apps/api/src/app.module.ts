@@ -11,6 +11,15 @@ import { MonitoringModule } from "./modules/monitoring/monitoring.module";
 import { UsersModule } from "./modules/users/users.module";
 import { InvitationsModule } from "./modules/invitations/invitations.module";
 import { PublicModule } from "./modules/public/public.module";
+import { CasesModule } from "./modules/cases/cases.module";
+import { AttendanceModule } from "./modules/attendance/attendance.module";
+import { ObservationsModule } from "./modules/observations/observations.module";
+import { IncidentsModule } from "./modules/incidents/incidents.module";
+import { NotificationsModule } from "./modules/notifications/notifications.module";
+import { ActivityModule } from "./modules/activity/activity.module";
+import { SearchModule } from "./modules/search/search.module";
+import { ReportsModule } from "./modules/reports/reports.module";
+import { RulesModule } from "./modules/rules/rules.module";
 
 @Module({
   imports: [
@@ -24,8 +33,17 @@ import { PublicModule } from "./modules/public/public.module";
     UsersModule,
     StudentsModule,
     AlertsModule,
+    CasesModule,
+    AttendanceModule,
+    ObservationsModule,
+    IncidentsModule,
+    NotificationsModule,
     DashboardModule,
     AuditLogsModule,
+    ActivityModule,
+    SearchModule,
+    ReportsModule,
+    RulesModule,
     TerritorialModule,
     MonitoringModule,
     InvitationsModule

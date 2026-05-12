@@ -6,9 +6,10 @@ import { PrismaService } from "../../database/prisma.service";
 export class StudentsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  findMany(filters: { search?: string; riskLevel?: RiskLevel; page: number; pageSize: number }) {
+  findMany(filters: { search?: string; riskLevel?: RiskLevel; institutionId?: string; page: number; pageSize: number }) {
     const where: Prisma.StudentWhereInput = {
       deletedAt: null,
+      institutionId: filters.institutionId,
       ...(filters.riskLevel ? { riskLevel: filters.riskLevel } : {}),
       ...(filters.search
         ? {
@@ -38,10 +39,11 @@ export class StudentsRepository {
     ]);
   }
 
-  findAtRisk(limit = 5) {
+  findAtRisk(limit = 5, institutionId?: string) {
     return this.prisma.student.findMany({
       where: {
         deletedAt: null,
+        institutionId,
         riskLevel: { in: ["MEDIUM", "HIGH", "CRITICAL"] }
       },
       include: {

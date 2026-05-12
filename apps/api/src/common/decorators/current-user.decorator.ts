@@ -5,6 +5,7 @@ export type CurrentUserPayload = {
   email: string;
   role: string;
   permissions: string[];
+  institutionId?: string | null;
   sessionId?: string;
 };
 

@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
+import { assertInstitutionAccess, getInstitutionScope } from "../../common/authz/tenant-scope";
 import { CurrentUserPayload } from "../../common/decorators/current-user.decorator";
 import { PrismaService } from "../../database/prisma.service";
 import { CreateStudentDto } from "./dto/create-student.dto";
@@ -13,28 +14,31 @@ export class StudentsService {
     private readonly studentsRepository: StudentsRepository
   ) {}
 
-  async findMany(query: QueryStudentsDto) {
+  async findMany(query: QueryStudentsDto, user: CurrentUserPayload) {
     const [total, data] = await this.studentsRepository.findMany({
       page: query.page,
       pageSize: query.pageSize,
       search: query.search,
-      riskLevel: query.riskLevel
+      riskLevel: query.riskLevel,
+      institutionId: getInstitutionScope(user)
     });
 
     return { data, meta: { total, page: query.page, pageSize: query.pageSize } };
   }
 
-  findAtRisk() {
-    return this.studentsRepository.findAtRisk();
+  findAtRisk(user: CurrentUserPayload) {
+    return this.studentsRepository.findAtRisk(5, getInstitutionScope(user));
   }
 
-  async findById(id: string) {
+  async findById(id: string, user: CurrentUserPayload) {
     const student = await this.studentsRepository.findById(id);
     if (!student) throw new NotFoundException("Student not found");
+    assertInstitutionAccess(user, student.institutionId);
     return student;
   }
 
   async create(dto: CreateStudentDto, user: CurrentUserPayload) {
+    assertInstitutionAccess(user, dto.institutionId);
     const student = await this.prisma.$transaction(async (tx) => {
       const created = await tx.student.create({ data: dto });
       await tx.auditLog.create({
@@ -53,7 +57,7 @@ export class StudentsService {
   }
 
   async update(id: string, dto: UpdateStudentDto, user: CurrentUserPayload) {
-    await this.findById(id);
+    await this.findById(id, user);
     const student = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.student.update({ where: { id }, data: dto });
       await tx.auditLog.create({
@@ -72,7 +76,7 @@ export class StudentsService {
   }
 
   async remove(id: string, user: CurrentUserPayload) {
-    await this.findById(id);
+    await this.findById(id, user);
     const student = await this.studentsRepository.softDelete(id);
     await this.prisma.auditLog.create({
       data: {

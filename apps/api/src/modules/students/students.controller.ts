@@ -18,20 +18,20 @@ export class StudentsController {
 
   @Get()
   @Permissions("student:read")
-  findMany(@Query() query: QueryStudentsDto) {
-    return this.studentsService.findMany(query);
+  findMany(@Query() query: QueryStudentsDto, @CurrentUser() user: CurrentUserPayload) {
+    return this.studentsService.findMany(query, user);
   }
 
   @Get("risk")
   @Permissions("student:read")
-  findAtRisk() {
-    return this.studentsService.findAtRisk();
+  findAtRisk(@CurrentUser() user: CurrentUserPayload) {
+    return this.studentsService.findAtRisk(user);
   }
 
   @Get(":id")
   @Permissions("student:read")
-  findById(@Param("id") id: string) {
-    return this.studentsService.findById(id);
+  findById(@Param("id") id: string, @CurrentUser() user: CurrentUserPayload) {
+    return this.studentsService.findById(id, user);
   }
 
   @Post()

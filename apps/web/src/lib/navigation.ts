@@ -1,9 +1,13 @@
 import {
   Bell,
+  AlertTriangle,
   BookOpen,
   Building2,
   ChartNoAxesCombined,
+  ClipboardCheck,
+  ClipboardList,
   GraduationCap,
+  History,
   LayoutDashboard,
   Map,
   Search,
@@ -32,8 +36,14 @@ export const navigationItems: NavigationItem[] = [
   { href: "/dashboard/guardian", label: "Mis hijos", icon: Users, roles: ["ACUDIENTE", "SUPER_ADMIN"] },
   { href: "/dashboard/student", label: "Mi rendimiento", icon: GraduationCap, roles: ["ESTUDIANTE", "SUPER_ADMIN"] },
   { href: "/dashboard/alerts", label: "Alertas", icon: Siren, permission: "alert:read" },
+  { href: "/dashboard/cases", label: "Casos", icon: ClipboardList, permission: "case:read" },
+  { href: "/dashboard/attendance", label: "Asistencia", icon: ClipboardCheck, permission: "attendance:read" },
+  { href: "/dashboard/observations", label: "Observador", icon: BookOpen, permission: "observation:read" },
+  { href: "/dashboard/incidents", label: "Convivencia", icon: AlertTriangle, permission: "incident:read" },
   { href: "/dashboard/monitoring", label: "Seguimiento", icon: Users, permission: "student:read" },
   { href: "/dashboard/territorial", label: "Analitica territorial", icon: Map, permission: "dashboard:territory:read" },
+  { href: "/dashboard/activity", label: "Actividad", icon: History },
+  { href: "/dashboard/reports", label: "Reportes", icon: ChartNoAxesCombined, permission: "report:export" },
   { href: "/profile", label: "Perfil", icon: User },
   { href: "/settings", label: "Configuracion", icon: Settings }
 ];

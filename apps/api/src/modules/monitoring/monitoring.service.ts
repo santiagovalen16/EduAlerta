@@ -1,5 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { AttendanceStatus } from "@prisma/client";
+import { getStudentVisibilityWhere } from "../../common/authz/student-scope";
+import { CurrentUserPayload } from "../../common/decorators/current-user.decorator";
 import { QueryMonitoringDto } from "./dto/query-monitoring.dto";
 import { MonitoringRepository } from "./monitoring.repository";
 
@@ -7,15 +9,17 @@ import { MonitoringRepository } from "./monitoring.repository";
 export class MonitoringService {
   constructor(private readonly monitoringRepository: MonitoringRepository) {}
 
-  async overview(query: QueryMonitoringDto) {
+  async overview(query: QueryMonitoringDto, user: CurrentUserPayload) {
+    const visibility = getStudentVisibilityWhere(user);
     const [metrics, [total, students]] = await Promise.all([
-      this.monitoringRepository.metrics(),
+      this.monitoringRepository.metrics(visibility),
       this.monitoringRepository.findStudents({
         page: query.page,
         pageSize: query.pageSize,
         search: query.search,
         riskLevel: query.riskLevel,
-        sort: query.sort
+        sort: query.sort,
+        visibility
       })
     ]);
 

@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { AuditAction } from "@prisma/client";
-import { getInstitutionScope } from "../../common/authz/tenant-scope";
+import { getStudentVisibilityWhere } from "../../common/authz/student-scope";
 import { CurrentUserPayload } from "../../common/decorators/current-user.decorator";
 import { PrismaService } from "../../database/prisma.service";
 
@@ -9,11 +9,11 @@ export class ReportsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async exportCsv(type = "alerts", user: CurrentUserPayload) {
-    const institutionId = getInstitutionScope(user);
+    const visibility = getStudentVisibilityWhere(user);
     const rows =
       type === "attendance"
-        ? await this.prisma.attendance.findMany({ where: { deletedAt: null, student: { institutionId } }, include: { student: true, course: true }, take: 1000 })
-        : await this.prisma.alert.findMany({ where: { deletedAt: null, student: { institutionId } }, include: { student: true, createdBy: true }, take: 1000 });
+        ? await this.prisma.attendance.findMany({ where: { deletedAt: null, student: visibility }, include: { student: true, course: true }, take: 1000 })
+        : await this.prisma.alert.findMany({ where: { deletedAt: null, student: visibility }, include: { student: true, createdBy: true }, take: 1000 });
 
     await this.prisma.auditLog.create({
       data: { actorId: user.sub, action: AuditAction.REPORT_EXPORTED, entityType: "Report", metadata: { type } }

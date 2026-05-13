@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { AuditAction, Prisma } from "@prisma/client";
+import { AuditAction, Prisma, RoleKey } from "@prisma/client";
 import { assertInstitutionAccess, getInstitutionScope } from "../../common/authz/tenant-scope";
+import { getStudentVisibilityWhere } from "../../common/authz/student-scope";
 import { CurrentUserPayload } from "../../common/decorators/current-user.decorator";
 import { PrismaService } from "../../database/prisma.service";
 import { CreateIncidentDto } from "./dto/create-incident.dto";
@@ -11,10 +12,11 @@ export class IncidentsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findMany(query: QueryIncidentsDto, user: CurrentUserPayload) {
-    const institutionId = getInstitutionScope(user);
+    const institutionId = user.role === RoleKey.ACUDIENTE ? undefined : getInstitutionScope(user);
     const where: Prisma.IncidentWhereInput = {
       deletedAt: null,
       institutionId,
+      student: getStudentVisibilityWhere(user),
       studentId: query.studentId,
       type: query.type,
       status: query.status,
@@ -37,7 +39,7 @@ export class IncidentsService {
   }
 
   async create(dto: CreateIncidentDto, user: CurrentUserPayload) {
-    const student = await this.prisma.student.findFirst({ where: { id: dto.studentId, deletedAt: null } });
+    const student = await this.prisma.student.findFirst({ where: { id: dto.studentId, deletedAt: null, ...getStudentVisibilityWhere(user) } });
     if (!student) throw new NotFoundException("Student not found.");
     assertInstitutionAccess(user, student.institutionId);
     const teacher = await this.prisma.teacher.findFirst({ where: { userId: user.sub, deletedAt: null } });

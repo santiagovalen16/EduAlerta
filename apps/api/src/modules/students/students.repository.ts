@@ -6,10 +6,10 @@ import { PrismaService } from "../../database/prisma.service";
 export class StudentsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  findMany(filters: { search?: string; riskLevel?: RiskLevel; institutionId?: string; page: number; pageSize: number }) {
+  findMany(filters: { search?: string; riskLevel?: RiskLevel; visibility?: Prisma.StudentWhereInput; page: number; pageSize: number }) {
     const where: Prisma.StudentWhereInput = {
       deletedAt: null,
-      institutionId: filters.institutionId,
+      ...filters.visibility,
       ...(filters.riskLevel ? { riskLevel: filters.riskLevel } : {}),
       ...(filters.search
         ? {
@@ -29,7 +29,7 @@ export class StudentsRepository {
         include: {
           institution: { include: { municipality: true } },
           course: true,
-          guardians: { include: { guardian: { include: { user: { select: { id: true, name: true, email: true } } } } } },
+          guardians: { where: { deletedAt: null }, include: { guardian: { include: { user: { select: { id: true, name: true, email: true } } } } } },
           _count: { select: { alerts: true, attendance: true, incidents: true } }
         },
         orderBy: [{ riskLevel: "desc" }, { lastName: "asc" }, { firstName: "asc" }],
@@ -39,11 +39,11 @@ export class StudentsRepository {
     ]);
   }
 
-  findAtRisk(limit = 5, institutionId?: string) {
+  findAtRisk(limit = 5, visibility?: Prisma.StudentWhereInput) {
     return this.prisma.student.findMany({
       where: {
         deletedAt: null,
-        institutionId,
+        ...visibility,
         riskLevel: { in: ["MEDIUM", "HIGH", "CRITICAL"] }
       },
       include: {
@@ -60,16 +60,16 @@ export class StudentsRepository {
     });
   }
 
-  findById(id: string) {
+  findById(id: string, visibility?: Prisma.StudentWhereInput) {
     return this.prisma.student.findFirst({
-      where: { id, deletedAt: null },
+      where: { id, deletedAt: null, ...visibility },
       include: {
         institution: { include: { municipality: true } },
         course: true,
         alerts: { where: { deletedAt: null }, orderBy: { createdAt: "desc" } },
         attendance: { where: { deletedAt: null }, orderBy: { date: "desc" }, take: 20 },
         incidents: { where: { deletedAt: null }, orderBy: { occurredAt: "desc" }, take: 20 },
-        guardians: { include: { guardian: { include: { user: { select: { id: true, name: true, email: true } } } } } }
+        guardians: { where: { deletedAt: null }, include: { guardian: { include: { user: { select: { id: true, name: true, email: true } } } } } }
       }
     });
   }

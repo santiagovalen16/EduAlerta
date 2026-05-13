@@ -319,6 +319,11 @@ model Municipality {
 model Institution {
   id              String             @id @default(uuid())
   name            String
+  logoUrl         String?
+  primaryColor    String?
+  academicCalendar Json?
+  shifts          Json?
+  levels          Json?
   daneCode        String?            @unique
   address         String?
   municipalityId  String
@@ -334,6 +339,9 @@ model Institution {
   observations    Observation[]
   incidents       Incident[]
   courses         Course[]
+  subjects        Subject[]
+  teacherAssignments TeacherAssignment[]
+  gradeBooks      GradeBook[]
   grades          Grade[]
   academicPeriods AcademicPeriod[]
   invitations     Invitation[]
@@ -383,11 +391,36 @@ model AcademicPeriod {
   startsAt      DateTime
   endsAt        DateTime
   isActive      Boolean     @default(false)
+  gradeBooks    GradeBook[]
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @default(now()) @updatedAt
   deletedAt     DateTime?
 
   @@unique([institutionId, name])
+  @@index([institutionId])
+  @@index([isActive])
+}
+
+model Subject {
+  id             String              @id @default(uuid())
+  institutionId  String
+  institution    Institution         @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  name           String
+  code           String?
+  description    String?
+  isActive       Boolean             @default(true)
+  teacherSubjects TeacherSubject[]
+  courseSubjects CourseSubject[]
+  teacherAssignments TeacherAssignment[]
+  academicRecords AcademicRecord[]
+  gradeBooks     GradeBook[]
+  attendance     Attendance[]
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @default(now()) @updatedAt
+  deletedAt      DateTime?
+
+  @@unique([institutionId, name])
+  @@unique([institutionId, code])
   @@index([institutionId])
   @@index([isActive])
 }
@@ -401,6 +434,8 @@ model Teacher {
   specialty      String?
   courses        Course[]        @relation("CourseTeacher")
   teacherCourses TeacherCourse[]
+  teacherSubjects TeacherSubject[]
+  teacherAssignments TeacherAssignment[]
   alerts         Alert[]
   incidents      Incident[]
   createdAt      DateTime        @default(now())
@@ -468,8 +503,13 @@ model Course {
   teacherId      String?
   teacher        Teacher?        @relation("CourseTeacher", fields: [teacherId], references: [id])
   teacherCourses TeacherCourse[]
+  courseSubjects CourseSubject[]
+  teacherAssignments TeacherAssignment[]
   students       Student[]
+  studentCourses StudentCourse[]
   attendance     Attendance[]
+  academicRecords AcademicRecord[]
+  gradeBooks      GradeBook[]
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @default(now()) @updatedAt
   deletedAt      DateTime?
@@ -492,6 +532,69 @@ model TeacherCourse {
   @@index([courseId])
 }
 
+model TeacherSubject {
+  teacherId String
+  subjectId String
+  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  deletedAt DateTime?
+
+  @@id([teacherId, subjectId])
+  @@index([subjectId])
+}
+
+model CourseSubject {
+  courseId  String
+  subjectId String
+  course    Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  deletedAt DateTime?
+
+  @@id([courseId, subjectId])
+  @@index([subjectId])
+}
+
+model TeacherAssignment {
+  id            String   @id @default(uuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  teacherId     String
+  courseId      String
+  subjectId     String
+  teacher       Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  course        Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  subject       Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  startsAt      DateTime?
+  endsAt        DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
+  deletedAt     DateTime?
+
+  @@unique([teacherId, courseId, subjectId])
+  @@index([institutionId])
+  @@index([teacherId])
+  @@index([courseId])
+  @@index([subjectId])
+}
+
+model StudentCourse {
+  id        String   @id @default(uuid())
+  studentId String
+  courseId  String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  startsAt  DateTime @default(now())
+  endsAt    DateTime?
+  createdAt DateTime @default(now())
+  deletedAt DateTime?
+
+  @@unique([studentId, courseId, startsAt])
+  @@index([studentId])
+  @@index([courseId])
+}
+
 model Student {
   id              String            @id @default(uuid())
   firstName       String
@@ -503,6 +606,7 @@ model Student {
   institution     Institution       @relation(fields: [institutionId], references: [id])
   courseId        String?
   course          Course?           @relation(fields: [courseId], references: [id])
+  courseHistory   StudentCourse[]
   alerts          Alert[]
   attendance      Attendance[]
   incidents       Incident[]
@@ -539,6 +643,8 @@ model Attendance {
   student   Student          @relation(fields: [studentId], references: [id])
   courseId  String
   course    Course           @relation(fields: [courseId], references: [id])
+  subjectId String?
+  subject   Subject?         @relation(fields: [subjectId], references: [id])
   date      DateTime
   status    AttendanceStatus
   notes     String?
@@ -547,7 +653,9 @@ model Attendance {
   deletedAt DateTime?
 
   @@unique([studentId, courseId, date])
+  @@index([studentId, courseId, subjectId, date])
   @@index([courseId, date])
+  @@index([subjectId, date])
   @@index([studentId, date])
   @@index([status])
 }
@@ -557,7 +665,10 @@ model AcademicRecord {
   studentId  String
   student    Student  @relation(fields: [studentId], references: [id])
   courseId   String?
-  subject    String
+  course     Course?  @relation(fields: [courseId], references: [id])
+  subjectId  String?
+  subject    Subject? @relation(fields: [subjectId], references: [id])
+  subjectName String
   period     String
   score      Float
   maxScore   Float    @default(5)
@@ -568,8 +679,32 @@ model AcademicRecord {
 
   @@index([studentId])
   @@index([courseId])
-  @@index([subject])
+  @@index([subjectId])
+  @@index([subjectName])
   @@index([recordedAt])
+}
+
+model GradeBook {
+  id               String          @id @default(uuid())
+  institutionId    String
+  institution      Institution     @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  courseId         String
+  subjectId        String
+  academicPeriodId String?
+  course           Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  subject          Subject         @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  academicPeriod   AcademicPeriod? @relation(fields: [academicPeriodId], references: [id], onDelete: SetNull)
+  name             String
+  weight           Float           @default(1)
+  maxScore         Float           @default(5)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @default(now()) @updatedAt
+  deletedAt        DateTime?
+
+  @@index([institutionId])
+  @@index([courseId])
+  @@index([subjectId])
+  @@index([academicPeriodId])
 }
 
 model MonitoringCase {

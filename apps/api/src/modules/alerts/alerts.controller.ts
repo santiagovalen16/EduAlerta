@@ -18,14 +18,14 @@ export class AlertsController {
 
   @Get()
   @Permissions("alert:read")
-  findMany(@Query() query: QueryAlertsDto) {
-    return this.alertsService.findMany(query);
+  findMany(@Query() query: QueryAlertsDto, @CurrentUser() user: CurrentUserPayload) {
+    return this.alertsService.findMany(query, user);
   }
 
   @Get(":id")
   @Permissions("alert:read")
-  findById(@Param("id") id: string) {
-    return this.alertsService.findById(id);
+  findById(@Param("id") id: string, @CurrentUser() user: CurrentUserPayload) {
+    return this.alertsService.findById(id, user);
   }
 
   @Post()

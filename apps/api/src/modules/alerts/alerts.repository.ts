@@ -11,6 +11,7 @@ export class AlertsRepository {
     type?: AlertType;
     priority?: AlertPriority;
     institutionId?: string;
+    visibility?: Prisma.StudentWhereInput;
     teacherId?: string;
     from?: string;
     to?: string;
@@ -24,7 +25,7 @@ export class AlertsRepository {
       ...(filters.type ? { type: filters.type } : {}),
       ...(filters.priority ? { priority: filters.priority } : {}),
       ...(filters.teacherId ? { teacherId: filters.teacherId } : {}),
-      ...(filters.institutionId ? { student: { institutionId: filters.institutionId } } : {}),
+      ...(filters.visibility || filters.institutionId ? { student: { ...filters.visibility, ...(filters.institutionId ? { institutionId: filters.institutionId } : {}) } } : {}),
       ...(filters.from || filters.to
         ? { createdAt: { gte: filters.from ? new Date(filters.from) : undefined, lte: filters.to ? new Date(filters.to) : undefined } }
         : {}),
@@ -55,11 +56,11 @@ export class AlertsRepository {
     ]);
   }
 
-  findById(id: string) {
+  findById(id: string, visibility?: Prisma.StudentWhereInput) {
     return this.prisma.alert.findFirst({
-      where: { id, deletedAt: null },
+      where: { id, deletedAt: null, student: visibility },
       include: {
-        student: { include: { course: true, guardians: { include: { guardian: { include: { user: true } } } } } },
+        student: { include: { course: true, guardians: { where: { deletedAt: null }, include: { guardian: { include: { user: true } } } } } },
         createdBy: { select: { id: true, name: true, email: true } },
         teacher: { include: { user: { select: { id: true, name: true, email: true } } } }
       }

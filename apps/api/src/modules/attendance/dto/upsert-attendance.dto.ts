@@ -11,6 +11,11 @@ export class UpsertAttendanceDto {
   @IsUUID()
   courseId!: string;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  subjectId?: string;
+
   @ApiProperty()
   @IsDateString()
   date!: string;

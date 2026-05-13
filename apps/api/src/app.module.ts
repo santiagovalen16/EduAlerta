@@ -20,6 +20,7 @@ import { ActivityModule } from "./modules/activity/activity.module";
 import { SearchModule } from "./modules/search/search.module";
 import { ReportsModule } from "./modules/reports/reports.module";
 import { RulesModule } from "./modules/rules/rules.module";
+import { AcademicModule } from "./modules/academic/academic.module";
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { RulesModule } from "./modules/rules/rules.module";
     UsersModule,
     StudentsModule,
     AlertsModule,
+    AcademicModule,
     CasesModule,
     AttendanceModule,
     ObservationsModule,

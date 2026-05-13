@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { getInstitutionScope } from "../../common/authz/tenant-scope";
+import { getStudentVisibilityWhere } from "../../common/authz/student-scope";
 import { CurrentUserPayload } from "../../common/decorators/current-user.decorator";
 import { PrismaService } from "../../database/prisma.service";
 
@@ -8,28 +8,28 @@ export class ActivityService {
   constructor(private readonly prisma: PrismaService) {}
 
   async feed(user: CurrentUserPayload) {
-    const institutionId = getInstitutionScope(user);
+    const visibility = getStudentVisibilityWhere(user);
     const [alerts, cases, incidents, observations] = await Promise.all([
       this.prisma.alert.findMany({
-        where: { deletedAt: null, student: { institutionId } },
+        where: { deletedAt: null, student: visibility },
         include: { student: { select: { firstName: true, lastName: true } }, createdBy: { select: { name: true } } },
         orderBy: { createdAt: "desc" },
         take: 10
       }),
       this.prisma.monitoringCase.findMany({
-        where: { deletedAt: null, institutionId },
+        where: { deletedAt: null, student: visibility },
         include: { student: { select: { firstName: true, lastName: true } }, assignedTo: { select: { name: true } } },
         orderBy: { updatedAt: "desc" },
         take: 10
       }),
       this.prisma.incident.findMany({
-        where: { deletedAt: null, institutionId },
+        where: { deletedAt: null, student: visibility },
         include: { student: { select: { firstName: true, lastName: true } }, reportedBy: { select: { name: true } } },
         orderBy: { createdAt: "desc" },
         take: 10
       }),
       this.prisma.observation.findMany({
-        where: { deletedAt: null, institutionId },
+        where: { deletedAt: null, student: visibility },
         include: { student: { select: { firstName: true, lastName: true } }, author: { select: { name: true } } },
         orderBy: { createdAt: "desc" },
         take: 10

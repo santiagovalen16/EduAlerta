@@ -6,20 +6,21 @@ import { PrismaService } from "../../database/prisma.service";
 export class MonitoringRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async metrics() {
+  async metrics(visibility?: Prisma.StudentWhereInput) {
     const [critical, high, medium, low, activeAlerts] = await Promise.all([
-      this.prisma.student.count({ where: { deletedAt: null, riskLevel: "CRITICAL" } }),
-      this.prisma.student.count({ where: { deletedAt: null, riskLevel: "HIGH" } }),
-      this.prisma.student.count({ where: { deletedAt: null, riskLevel: "MEDIUM" } }),
-      this.prisma.student.count({ where: { deletedAt: null, riskLevel: "LOW" } }),
-      this.prisma.alert.count({ where: { deletedAt: null, status: { in: ["NEW", "IN_REVIEW", "ESCALATED"] } } })
+      this.prisma.student.count({ where: { deletedAt: null, ...visibility, riskLevel: "CRITICAL" } }),
+      this.prisma.student.count({ where: { deletedAt: null, ...visibility, riskLevel: "HIGH" } }),
+      this.prisma.student.count({ where: { deletedAt: null, ...visibility, riskLevel: "MEDIUM" } }),
+      this.prisma.student.count({ where: { deletedAt: null, ...visibility, riskLevel: "LOW" } }),
+      this.prisma.alert.count({ where: { deletedAt: null, status: { in: ["NEW", "IN_REVIEW", "ESCALATED"] }, student: visibility } })
     ]);
     return { critical, high, medium, low, activeAlerts };
   }
 
-  findStudents(filters: { search?: string; riskLevel?: RiskLevel; page: number; pageSize: number; sort?: string }) {
+  findStudents(filters: { search?: string; riskLevel?: RiskLevel; visibility?: Prisma.StudentWhereInput; page: number; pageSize: number; sort?: string }) {
     const where: Prisma.StudentWhereInput = {
       deletedAt: null,
+      ...filters.visibility,
       ...(filters.riskLevel ? { riskLevel: filters.riskLevel } : {}),
       ...(filters.search
         ? {
@@ -40,7 +41,7 @@ export class MonitoringRepository {
         include: {
           course: true,
           institution: { include: { municipality: true } },
-          guardians: { include: { guardian: { include: { user: { select: { name: true, email: true } } } } } },
+          guardians: { where: { deletedAt: null }, include: { guardian: { include: { user: { select: { name: true, email: true } } } } } },
           alerts: { where: { deletedAt: null, status: { not: "CLOSED" } } },
           attendance: { where: { deletedAt: null }, orderBy: { date: "desc" }, take: 20 },
           academicRecords: { where: { deletedAt: null }, orderBy: { recordedAt: "desc" }, take: 10 },

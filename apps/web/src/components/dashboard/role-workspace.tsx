@@ -119,7 +119,7 @@ export async function RoleWorkspace({ kind }: { kind: RoleWorkspaceKind }) {
       {kind === "rector" ? <RectorView institution={institution} monitoring={monitoring} /> : null}
       {kind === "coordinator" ? <CoordinatorView institution={institution} monitoring={monitoring} /> : null}
       {kind === "teacher" ? <TeacherView institution={institution} monitoring={monitoring} /> : null}
-      {kind === "guardian" ? <GuardianView user={user} institution={institution} /> : null}
+      {kind === "guardian" ? <GuardianView user={user} monitoring={monitoring} /> : null}
       {kind === "student" ? <StudentView user={user} institution={institution} /> : null}
     </div>
   );
@@ -227,16 +227,57 @@ function TeacherView({ institution, monitoring }: { institution: InstitutionDash
   );
 }
 
-function GuardianView({ user, institution }: { user: AuthUser; institution: InstitutionDashboard | null }) {
+function GuardianView({ user, monitoring }: { user: AuthUser; monitoring: MonitoringOverview | null }) {
+  const children = monitoring?.data ?? [];
+  const activeAlerts = children.reduce((total, child) => total + child.activeAlerts, 0);
+  const attendanceAverage = children.length === 0 ? 0 : Math.round(children.reduce((total, child) => total + child.attendanceRate, 0) / children.length);
+  const academicAverage = children.length === 0 ? 0 : Number((children.reduce((total, child) => total + child.academicAverage, 0) / children.length).toFixed(2));
+
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <Panel title="Acompanamiento familiar" description={`Sesion de ${user.name}. Informacion filtrada por permisos de acudiente.`}>
-        <Checklist items={["Consultar alertas abiertas", "Revisar observaciones institucionales", "Confirmar acciones de seguimiento", "Actualizar datos de contacto"]} />
-      </Panel>
-      <Panel title="Resumen disponible" description="Datos visibles para el acudiente segun autorizacion institucional.">
-        <List items={(institution?.recentAlerts ?? []).slice(0, 4).map((alert) => `${alert.student.firstName} ${alert.student.lastName} · ${alert.status}`)} empty="No hay alertas visibles para esta cuenta." />
-      </Panel>
-    </div>
+    <>
+      <MetricGrid
+        metrics={[
+          ["Hijos vinculados", children.length, Users],
+          ["Alertas activas", activeAlerts, Siren],
+          ["Asistencia", `${attendanceAverage}%`, CheckCircle2],
+          ["Promedio", academicAverage, BarChart3]
+        ]}
+      />
+      <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+        <Panel title="Mis hijos" description={`Informacion visible para ${user.name}, filtrada por vinculacion de acudiente.`}>
+          <div className="space-y-3">
+            {children.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No hay estudiantes vinculados a esta cuenta de acudiente.</p>
+            ) : (
+              children.map((child) => (
+                <div key={child.id} className="rounded-md border p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium">{child.student}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {child.course} · {child.institution}
+                      </p>
+                    </div>
+                    <Badge variant={child.riskLevel === "CRITICAL" || child.riskLevel === "HIGH" ? "danger" : "muted"}>{child.riskLevel}</Badge>
+                  </div>
+                  <div className="mt-3 grid gap-2 text-sm text-muted-foreground sm:grid-cols-3">
+                    <span>Alertas: {child.activeAlerts}</span>
+                    <span>Asistencia: {child.attendanceRate}%</span>
+                    <span>Promedio: {child.academicAverage}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </Panel>
+        <Panel title="Ultimos movimientos" description="Alertas y casos recientes asociados unicamente a tus hijos.">
+          <List
+            items={children.flatMap((child) => child.timeline.slice(0, 3).map((item) => `${child.student} · ${item.type} · ${item.label}`)).slice(0, 6)}
+            empty="No hay actividad reciente visible para esta cuenta."
+          />
+        </Panel>
+      </div>
+    </>
   );
 }
 

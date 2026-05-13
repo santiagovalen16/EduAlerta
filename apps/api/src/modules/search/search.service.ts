@@ -1,4 +1,6 @@
 import { Injectable } from "@nestjs/common";
+import { RoleKey } from "@prisma/client";
+import { getStudentVisibilityWhere } from "../../common/authz/student-scope";
 import { getInstitutionScope } from "../../common/authz/tenant-scope";
 import { CurrentUserPayload } from "../../common/decorators/current-user.decorator";
 import { PrismaService } from "../../database/prisma.service";
@@ -10,22 +12,23 @@ export class SearchService {
   async search(query = "", user: CurrentUserPayload) {
     const q = query.trim();
     if (q.length < 2) return { data: [] };
-    const institutionId = getInstitutionScope(user);
+    const institutionId = user.role === RoleKey.ACUDIENTE ? undefined : getInstitutionScope(user);
+    const visibility = getStudentVisibilityWhere(user);
     const [students, alerts, cases, institutions] = await Promise.all([
       this.prisma.student.findMany({
-        where: { deletedAt: null, institutionId, OR: [{ firstName: { contains: q, mode: "insensitive" } }, { lastName: { contains: q, mode: "insensitive" } }, { documentNumber: { contains: q, mode: "insensitive" } }] },
+        where: { deletedAt: null, ...visibility, OR: [{ firstName: { contains: q, mode: "insensitive" } }, { lastName: { contains: q, mode: "insensitive" } }, { documentNumber: { contains: q, mode: "insensitive" } }] },
         take: 8
       }),
       this.prisma.alert.findMany({
-        where: { deletedAt: null, student: { institutionId }, description: { contains: q, mode: "insensitive" } },
+        where: { deletedAt: null, student: visibility, description: { contains: q, mode: "insensitive" } },
         take: 8
       }),
       this.prisma.monitoringCase.findMany({
-        where: { deletedAt: null, institutionId, OR: [{ title: { contains: q, mode: "insensitive" } }, { summary: { contains: q, mode: "insensitive" } }] },
+        where: { deletedAt: null, institutionId, student: visibility, OR: [{ title: { contains: q, mode: "insensitive" } }, { summary: { contains: q, mode: "insensitive" } }] },
         take: 8
       }),
       this.prisma.institution.findMany({
-        where: { deletedAt: null, id: institutionId, name: { contains: q, mode: "insensitive" } },
+        where: { deletedAt: null, id: user.role === RoleKey.ACUDIENTE ? "__guardian_child_scope__" : institutionId, name: { contains: q, mode: "insensitive" } },
         take: 8
       })
     ]);

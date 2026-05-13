@@ -27,7 +27,10 @@ export function AttendanceForm({ students }: { students: Array<{ id: string; nam
 
   async function onSubmit(values: z.infer<typeof schema>) {
     const response = await fetch("/api/backend/attendance", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values) });
-    if (!response.ok) throw new Error(await response.text());
+    if (!response.ok) {
+      toast.error("No tienes permisos para registrar asistencia.");
+      return;
+    }
     toast.success("Asistencia registrada");
     router.refresh();
   }

@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { assertInstitutionAccess, getInstitutionScope } from "../../common/authz/tenant-scope";
+import { assertInstitutionAccess } from "../../common/authz/tenant-scope";
+import { assertStudentVisibility, getStudentVisibilityWhere } from "../../common/authz/student-scope";
 import { CurrentUserPayload } from "../../common/decorators/current-user.decorator";
 import { PrismaService } from "../../database/prisma.service";
 import { CreateStudentDto } from "./dto/create-student.dto";
@@ -20,20 +21,20 @@ export class StudentsService {
       pageSize: query.pageSize,
       search: query.search,
       riskLevel: query.riskLevel,
-      institutionId: getInstitutionScope(user)
+      visibility: getStudentVisibilityWhere(user)
     });
 
     return { data, meta: { total, page: query.page, pageSize: query.pageSize } };
   }
 
   findAtRisk(user: CurrentUserPayload) {
-    return this.studentsRepository.findAtRisk(5, getInstitutionScope(user));
+    return this.studentsRepository.findAtRisk(5, getStudentVisibilityWhere(user));
   }
 
   async findById(id: string, user: CurrentUserPayload) {
-    const student = await this.studentsRepository.findById(id);
+    const student = await this.studentsRepository.findById(id, getStudentVisibilityWhere(user));
     if (!student) throw new NotFoundException("Student not found");
-    assertInstitutionAccess(user, student.institutionId);
+    assertStudentVisibility(user, student);
     return student;
   }
 

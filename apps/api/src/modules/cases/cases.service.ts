@@ -1,6 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
-import { AuditAction, CaseEventType, MonitoringCaseStatus, Prisma } from "@prisma/client";
+import { AuditAction, CaseEventType, MonitoringCaseStatus, Prisma, RoleKey } from "@prisma/client";
 import { assertInstitutionAccess, getInstitutionScope } from "../../common/authz/tenant-scope";
+import { getStudentVisibilityWhere } from "../../common/authz/student-scope";
 import { CurrentUserPayload } from "../../common/decorators/current-user.decorator";
 import { PrismaService } from "../../database/prisma.service";
 import { CreateCaseCommentDto } from "./dto/create-case-comment.dto";
@@ -13,10 +14,12 @@ export class CasesService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findMany(query: QueryCasesDto, user: CurrentUserPayload) {
-    const institutionId = getInstitutionScope(user);
+    const institutionId = user.role === RoleKey.ACUDIENTE ? undefined : getInstitutionScope(user);
+    const visibility = getStudentVisibilityWhere(user);
     const where: Prisma.MonitoringCaseWhereInput = {
       deletedAt: null,
       institutionId,
+      student: visibility,
       studentId: query.studentId,
       status: query.status,
       priority: query.priority,
@@ -52,7 +55,7 @@ export class CasesService {
 
   async findById(id: string, user: CurrentUserPayload) {
     const record = await this.prisma.monitoringCase.findFirst({
-      where: { id, deletedAt: null },
+      where: { id, deletedAt: null, student: getStudentVisibilityWhere(user) },
       include: {
         student: { include: { institution: { select: { id: true, name: true } }, course: true } },
         assignedTo: { select: { id: true, name: true, email: true } },
@@ -66,7 +69,7 @@ export class CasesService {
   }
 
   async create(dto: CreateCaseDto, user: CurrentUserPayload) {
-    const student = await this.prisma.student.findFirst({ where: { id: dto.studentId, deletedAt: null } });
+    const student = await this.prisma.student.findFirst({ where: { id: dto.studentId, deletedAt: null, ...getStudentVisibilityWhere(user) } });
     if (!student) throw new NotFoundException("Student not found.");
     assertInstitutionAccess(user, student.institutionId);
 

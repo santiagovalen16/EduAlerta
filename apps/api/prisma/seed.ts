@@ -30,6 +30,8 @@ const permissions = [
   ["case:update", "Actualizar casos de seguimiento"],
   ["attendance:read", "Leer asistencia"],
   ["attendance:write", "Registrar asistencia"],
+  ["academic:read", "Leer estructura academica"],
+  ["academic:write", "Gestionar estructura academica"],
   ["observation:read", "Leer observaciones"],
   ["observation:create", "Crear observaciones"],
   ["incident:read", "Leer incidentes"],
@@ -54,6 +56,8 @@ const rolePermissions: Record<RoleKey, string[]> = {
     "case:read",
     "case:update",
     "attendance:read",
+    "academic:read",
+    "academic:write",
     "observation:read",
     "observation:create",
     "incident:read",
@@ -71,14 +75,16 @@ const rolePermissions: Record<RoleKey, string[]> = {
     "case:read",
     "case:update",
     "attendance:read",
+    "academic:read",
+    "academic:write",
     "observation:read",
     "observation:create",
     "incident:read",
     "incident:create"
   ],
-  DOCENTE: ["alert:create", "alert:read", "student:read", "attendance:read", "attendance:write", "observation:read", "observation:create", "incident:read", "incident:create", "case:read"],
-  SECRETARIA: ["student:read", "dashboard:territory:read", "report:export", "case:read", "attendance:read", "observation:read", "incident:read"],
-  ACUDIENTE: ["alert:read", "case:read", "attendance:read", "observation:read"],
+  DOCENTE: ["alert:create", "alert:read", "student:read", "attendance:read", "attendance:write", "academic:read", "observation:read", "observation:create", "incident:read", "incident:create", "case:read"],
+  SECRETARIA: ["student:read", "dashboard:territory:read", "report:export", "case:read", "attendance:read", "academic:read", "observation:read", "incident:read"],
+  ACUDIENTE: ["student:read", "alert:read", "case:read", "attendance:read", "observation:read"],
   ESTUDIANTE: ["student:read", "alert:read", "attendance:read", "observation:read"]
 };
 
@@ -307,6 +313,30 @@ async function main() {
     }
   });
 
+  const mathSubject = await prisma.subject.upsert({
+    where: { institutionId_name: { institutionId: institution.id, name: "Matematicas" } },
+    update: { code: "MAT", isActive: true, deletedAt: null },
+    create: { institutionId: institution.id, name: "Matematicas", code: "MAT" }
+  });
+
+  const languageSubject = await prisma.subject.upsert({
+    where: { institutionId_name: { institutionId: institution.id, name: "Lenguaje" } },
+    update: { code: "LEN", isActive: true, deletedAt: null },
+    create: { institutionId: institution.id, name: "Lenguaje", code: "LEN" }
+  });
+
+  const scienceSubject = await prisma.subject.upsert({
+    where: { institutionId_name: { institutionId: institution.id, name: "Ciencias" } },
+    update: { code: "SCI", isActive: true, deletedAt: null },
+    create: { institutionId: institution.id, name: "Ciencias", code: "SCI" }
+  });
+
+  const socialSubject = await prisma.subject.upsert({
+    where: { institutionId_name: { institutionId: institution.id, name: "Sociales" } },
+    update: { code: "SOC", isActive: true, deletedAt: null },
+    create: { institutionId: institution.id, name: "Sociales", code: "SOC" }
+  });
+
   const course82 = await prisma.course.upsert({
     where: { institutionId_name_academicYear: { institutionId: institution.id, name: "8-2", academicYear: 2026 } },
     update: { grade: "8", teacherId: teacherMath.id, deletedAt: null },
@@ -330,6 +360,48 @@ async function main() {
       teacherId: teacherOrientation.id
     }
   });
+
+  for (const subject of [mathSubject, languageSubject, scienceSubject, socialSubject]) {
+    await prisma.courseSubject.upsert({
+      where: { courseId_subjectId: { courseId: course82.id, subjectId: subject.id } },
+      update: { deletedAt: null },
+      create: { courseId: course82.id, subjectId: subject.id }
+    });
+    await prisma.courseSubject.upsert({
+      where: { courseId_subjectId: { courseId: course91.id, subjectId: subject.id } },
+      update: { deletedAt: null },
+      create: { courseId: course91.id, subjectId: subject.id }
+    });
+  }
+
+  await prisma.teacherSubject.upsert({
+    where: { teacherId_subjectId: { teacherId: teacherMath.id, subjectId: mathSubject.id } },
+    update: { deletedAt: null },
+    create: { teacherId: teacherMath.id, subjectId: mathSubject.id }
+  });
+  await prisma.teacherSubject.upsert({
+    where: { teacherId_subjectId: { teacherId: teacherOrientation.id, subjectId: languageSubject.id } },
+    update: { deletedAt: null },
+    create: { teacherId: teacherOrientation.id, subjectId: languageSubject.id }
+  });
+
+  for (const [teacherId, courseId, subjectId] of [
+    [teacherMath.id, course82.id, mathSubject.id],
+    [teacherMath.id, course91.id, mathSubject.id],
+    [teacherOrientation.id, course82.id, languageSubject.id],
+    [teacherOrientation.id, course91.id, languageSubject.id]
+  ]) {
+    await prisma.teacherCourse.upsert({
+      where: { teacherId_courseId: { teacherId, courseId } },
+      update: { deletedAt: null },
+      create: { teacherId, courseId }
+    });
+    await prisma.teacherAssignment.upsert({
+      where: { teacherId_courseId_subjectId: { teacherId, courseId, subjectId } },
+      update: { institutionId: institution.id, deletedAt: null },
+      create: { institutionId: institution.id, teacherId, courseId, subjectId }
+    });
+  }
 
   const students = await Promise.all(
     [
@@ -363,6 +435,16 @@ async function main() {
       })
     )
   );
+
+  for (const student of students) {
+    if (student.courseId) {
+      await prisma.studentCourse.upsert({
+        where: { studentId_courseId_startsAt: { studentId: student.id, courseId: student.courseId, startsAt: new Date("2026-01-15T00:00:00.000Z") } },
+        update: { endsAt: null, deletedAt: null },
+        create: { studentId: student.id, courseId: student.courseId, startsAt: new Date("2026-01-15T00:00:00.000Z") }
+      });
+    }
+  }
 
   await prisma.studentGuardian.upsert({
     where: { guardianId_studentId: { guardianId: guardian.id, studentId: students[0].id } },
@@ -475,7 +557,7 @@ async function main() {
     }
   });
 
-  const subjects = ["Matematicas", "Lenguaje", "Ciencias", "Sociales"];
+  const subjects = [mathSubject, languageSubject, scienceSubject, socialSubject];
   for (const student of students) {
     for (const [index, subject] of subjects.entries()) {
       await prisma.academicRecord.upsert({
@@ -488,7 +570,8 @@ async function main() {
           id: `00000000-0000-5000-8000-${student.documentNumber?.slice(-6)}${index}`,
           studentId: student.id,
           courseId: student.courseId,
-          subject,
+          subjectId: subject.id,
+          subjectName: subject.name,
           period: "2026-I",
           score: student.riskLevel === RiskLevel.LOW ? 4.2 : student.riskLevel === RiskLevel.MEDIUM ? 3.4 : 2.8
         }

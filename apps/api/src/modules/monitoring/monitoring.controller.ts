@@ -1,5 +1,6 @@
 import { Controller, Get, Query, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { CurrentUser, CurrentUserPayload } from "../../common/decorators/current-user.decorator";
 import { Permissions } from "../../common/decorators/permissions.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "../../common/guards/permissions.guard";
@@ -15,7 +16,7 @@ export class MonitoringController {
 
   @Get()
   @Permissions("student:read")
-  overview(@Query() query: QueryMonitoringDto) {
-    return this.monitoringService.overview(query);
+  overview(@Query() query: QueryMonitoringDto, @CurrentUser() user: CurrentUserPayload) {
+    return this.monitoringService.overview(query, user);
   }
 }

@@ -1,5 +1,5 @@
-import { RoleWorkspace } from "@/components/dashboard/role-workspace";
+import { AdminDashboard } from "@/modules/dashboard/role-pages";
 
 export default function AdminDashboardPage() {
-  return <RoleWorkspace kind="admin" />;
+  return <AdminDashboard />;
 }

@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { accessCookieOptions, refreshCookieOptions } from "@/lib/auth/cookies";
 import { decodeJwtPayload, isJwtExpired } from "@/lib/auth/jwt";
-import { getRoleDashboard, requiredRolesForPath } from "@/lib/auth/routing";
+import { getRoleDashboard, isAuthRoute, isProtectedRoute, requiredPermissionForPath, requiredRolesForPath } from "@/lib/auth/route-registry";
 import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from "@/lib/auth/session";
 import type { AuthResponse, RoleKey } from "@/lib/auth/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-const authRoutes = ["/login", "/register", "/forgot-password", "/reset-password", "/verify-email", "/activate-account"];
 
 type TokenPayload = {
   role?: RoleKey;
+  permissions?: string[];
   exp?: number;
   onboardingCompletedAt?: string | null;
 };
@@ -19,7 +19,7 @@ export async function middleware(request: NextRequest) {
   const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
   const refreshToken = request.cookies.get(REFRESH_TOKEN_COOKIE)?.value;
 
-  if (authRoutes.some((route) => pathname.startsWith(route))) {
+  if (isAuthRoute(pathname)) {
     if (accessToken && !isJwtExpired(accessToken)) {
       const payload = decodeJwtPayload<TokenPayload>(accessToken);
       return NextResponse.redirect(new URL(getRoleDashboard(payload?.role), request.url));
@@ -27,7 +27,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (!pathname.startsWith("/dashboard") && !pathname.startsWith("/profile") && !pathname.startsWith("/settings") && !pathname.startsWith("/account") && !pathname.startsWith("/onboarding")) {
+  if (!isProtectedRoute(pathname)) {
     return NextResponse.next();
   }
 
@@ -63,7 +63,9 @@ export async function middleware(request: NextRequest) {
   }
 
   const role = currentPayload?.role;
+  const permissions = currentPayload?.permissions ?? [];
   const requiredRoles = requiredRolesForPath(pathname);
+  const requiredPermission = requiredPermissionForPath(pathname);
   let onboardingCompleted = Boolean(currentPayload?.onboardingCompletedAt);
 
   if (!onboardingCompleted) {
@@ -84,6 +86,10 @@ export async function middleware(request: NextRequest) {
   }
 
   if (requiredRoles && (!role || !requiredRoles.includes(role))) {
+    return NextResponse.redirect(new URL(getRoleDashboard(role), request.url));
+  }
+
+  if (requiredPermission && !permissions.includes(requiredPermission)) {
     return NextResponse.redirect(new URL(getRoleDashboard(role), request.url));
   }
 

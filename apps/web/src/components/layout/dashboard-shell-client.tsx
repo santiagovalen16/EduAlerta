@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { AuthUser } from "@/lib/auth/types";
 import { cn } from "@/lib/utils";
-import { quickActions, visibleNavigation } from "@/lib/navigation";
+import { visibleNavigation, visibleQuickActions } from "@/lib/navigation";
 
 export function DashboardShellClient({ user, children }: { user: AuthUser; children: React.ReactNode }) {
   const pathname = usePathname();
@@ -18,7 +18,7 @@ export function DashboardShellClient({ user, children }: { user: AuthUser; child
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const navigation = useMemo(() => visibleNavigation(user.role, user.permissions), [user.role, user.permissions]);
-  const actions = useMemo(() => quickActions.filter((item) => !item.permission || user.permissions.includes(item.permission)), [user.permissions]);
+  const actions = useMemo(() => visibleQuickActions(user.role, user.permissions), [user.role, user.permissions]);
   const activeItem = navigation.find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
 
   async function logout() {

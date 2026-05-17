@@ -7,5 +7,11 @@ export const queryKeys = {
   },
   monitoring: {
     overview: (filters: Record<string, string>) => ["monitoring", filters] as const
+  },
+  attendance: {
+    all: ["attendance"] as const
+  },
+  observations: {
+    all: ["observations"] as const
   }
 };

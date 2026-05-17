@@ -1,5 +1,5 @@
-import { RoleWorkspace } from "@/components/dashboard/role-workspace";
+import { SecretariaDashboard } from "@/modules/dashboard/role-pages";
 
 export default function SecretariaDashboardPage() {
-  return <RoleWorkspace kind="secretaria" />;
+  return <SecretariaDashboard />;
 }

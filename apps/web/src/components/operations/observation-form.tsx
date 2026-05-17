@@ -9,6 +9,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useCreateObservationMutation } from "@/hooks/mutations/use-create-observation";
 
 const schema = z.object({
   studentId: z.string().uuid(),
@@ -22,17 +23,21 @@ const schema = z.object({
 
 export function ObservationForm({ students }: { students: Array<{ id: string; name: string }> }) {
   const router = useRouter();
+  const createObservation = useCreateObservationMutation();
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
     defaultValues: { studentId: students[0]?.id ?? "", category: "ACADEMIC", severity: "LOW", title: "", description: "", followUpRequired: false, isPositive: false }
   });
 
   async function onSubmit(values: z.infer<typeof schema>) {
-    const response = await fetch("/api/backend/observations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values) });
-    if (!response.ok) throw new Error(await response.text());
-    toast.success("Observacion registrada");
-    form.reset({ ...form.getValues(), title: "", description: "" });
-    router.refresh();
+    createObservation.mutate(values, {
+      onSuccess: () => {
+        toast.success("Observacion registrada");
+        form.reset({ ...form.getValues(), title: "", description: "" });
+        router.refresh();
+      },
+      onError: () => toast.error("No fue posible registrar la observacion.")
+    });
   }
 
   return (
@@ -61,8 +66,8 @@ export function ObservationForm({ students }: { students: Array<{ id: string; na
       </div>
       <Input placeholder="Titulo" {...form.register("title")} />
       <Input placeholder="Descripcion" {...form.register("description")} />
-      <Button className="md:col-span-2 md:w-fit" disabled={form.formState.isSubmitting || students.length === 0}>
-        {form.formState.isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+      <Button className="md:col-span-2 md:w-fit" disabled={createObservation.isPending || students.length === 0}>
+        {createObservation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
         Registrar observacion
       </Button>
     </form>

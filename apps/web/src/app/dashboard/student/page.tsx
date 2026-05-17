@@ -1,5 +1,5 @@
-import { RoleWorkspace } from "@/components/dashboard/role-workspace";
+import { StudentDashboard } from "@/modules/dashboard/role-pages";
 
 export default function StudentDashboardPage() {
-  return <RoleWorkspace kind="student" />;
+  return <StudentDashboard />;
 }

@@ -1,5 +1,5 @@
-import { RoleWorkspace } from "@/components/dashboard/role-workspace";
+import { TeacherDashboard } from "@/modules/dashboard/role-pages";
 
 export default function TeacherDashboardPage() {
-  return <RoleWorkspace kind="teacher" />;
+  return <TeacherDashboard />;
 }

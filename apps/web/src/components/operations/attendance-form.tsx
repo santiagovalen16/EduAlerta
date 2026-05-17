@@ -9,6 +9,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useCreateAttendanceMutation } from "@/hooks/mutations/use-create-attendance";
 
 const schema = z.object({
   studentId: z.string().uuid(),
@@ -20,19 +21,20 @@ const schema = z.object({
 
 export function AttendanceForm({ students }: { students: Array<{ id: string; name: string; courseId: string | null; course: string }> }) {
   const router = useRouter();
+  const createAttendance = useCreateAttendanceMutation();
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
     defaultValues: { studentId: students[0]?.id ?? "", courseId: students[0]?.courseId ?? "", date: new Date().toISOString().slice(0, 10), status: "PRESENT", notes: "" }
   });
 
   async function onSubmit(values: z.infer<typeof schema>) {
-    const response = await fetch("/api/backend/attendance", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values) });
-    if (!response.ok) {
-      toast.error("No tienes permisos para registrar asistencia.");
-      return;
-    }
-    toast.success("Asistencia registrada");
-    router.refresh();
+    createAttendance.mutate(values, {
+      onSuccess: () => {
+        toast.success("Asistencia registrada");
+        router.refresh();
+      },
+      onError: () => toast.error("No fue posible registrar la asistencia.")
+    });
   }
 
   return (
@@ -73,8 +75,8 @@ export function AttendanceForm({ students }: { students: Array<{ id: string; nam
         <Label>Notas</Label>
         <Input {...form.register("notes")} />
       </div>
-      <Button className="md:col-span-5 md:w-fit" disabled={form.formState.isSubmitting || students.length === 0}>
-        {form.formState.isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+      <Button className="md:col-span-5 md:w-fit" disabled={createAttendance.isPending || students.length === 0}>
+        {createAttendance.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
         Registrar asistencia
       </Button>
     </form>

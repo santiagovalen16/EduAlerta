@@ -26,3 +26,6 @@ export type PaginatedResponse<T> = {
     pageSize: number;
   };
 };
+
+export { browserApiClient } from "./browser-client";
+export type { PaginatedResponse as ApiPaginatedResponse };

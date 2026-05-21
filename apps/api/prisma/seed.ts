@@ -82,7 +82,7 @@ const rolePermissions: Record<RoleKey, string[]> = {
     "incident:read",
     "incident:create"
   ],
-  DOCENTE: ["alert:create", "alert:read", "student:read", "attendance:read", "attendance:write", "academic:read", "observation:read", "observation:create", "incident:read", "incident:create", "case:read"],
+  DOCENTE: ["alert:create", "alert:read", "alert:update", "student:read", "attendance:read", "attendance:write", "academic:read", "observation:read", "observation:create", "incident:read", "incident:create", "case:read"],
   SECRETARIA: ["student:read", "dashboard:territory:read", "report:export", "case:read", "attendance:read", "academic:read", "observation:read", "incident:read"],
   ACUDIENTE: ["student:read", "alert:read", "case:read", "attendance:read", "observation:read"],
   ESTUDIANTE: ["student:read", "alert:read", "attendance:read", "observation:read"]

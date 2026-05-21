@@ -6,6 +6,7 @@ import type { Route } from "next";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useUnreadNotificationsCount } from "@/hooks/queries/use-unread-notifications-count";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { AuthUser } from "@/lib/auth/types";
@@ -17,6 +18,7 @@ export function DashboardShellClient({ user, children }: { user: AuthUser; child
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
+  const unreadQuery = useUnreadNotificationsCount();
   const navigation = useMemo(() => visibleNavigation(user.role, user.permissions), [user.role, user.permissions]);
   const actions = useMemo(() => visibleQuickActions(user.role, user.permissions), [user.role, user.permissions]);
   const activeItem = navigation.find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
@@ -106,8 +108,13 @@ export function DashboardShellClient({ user, children }: { user: AuthUser; child
               <Command className="h-4 w-4" />
               Buscar o ejecutar accion
             </Button>
-            <Button variant="ghost" size="icon" aria-label="Notificaciones" onClick={() => router.push("/settings/notifications" as Route)}>
+            <Button variant="ghost" size="icon" className="relative" aria-label="Notificaciones" onClick={() => router.push("/settings/notifications" as Route)}>
               <Bell className="h-4 w-4" />
+              {(unreadQuery.data?.count ?? 0) > 0 ? (
+                <span className="absolute right-1 top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-semibold text-white">
+                  {unreadQuery.data && unreadQuery.data.count > 9 ? "9+" : unreadQuery.data?.count}
+                </span>
+              ) : null}
             </Button>
             <Badge variant="muted" className="hidden sm:inline-flex">
               {user.role}

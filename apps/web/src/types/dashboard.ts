@@ -2,6 +2,7 @@ export type RiskLevel = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 export type AlertStatus = "NEW" | "IN_REVIEW" | "ESCALATED" | "CLOSED";
 export type AlertType = "ATTENDANCE" | "ACADEMIC" | "BEHAVIOR" | "FAMILY";
 export type AlertPriority = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+export type CaseStatus = "NEW" | "IN_REVIEW" | "ESCALATED" | "INTERVENTION" | "FOLLOW_UP" | "RESOLVED" | "CLOSED";
 
 export type TerritorialOverview = {
   kpis: {
@@ -32,6 +33,60 @@ export type AlertListItem = {
   student: { firstName: string; lastName: string; riskLevel: RiskLevel; course: { name: string } | null; institution: { name: string } };
   createdBy: { name: string; email: string };
   teacher: { user: { name: string; email: string } } | null;
+};
+
+export type EntityComment = {
+  id: string;
+  body: string;
+  createdAt: string;
+  author: { id: string; name: string; email?: string } | null;
+};
+
+export type AlertDetail = AlertListItem & {
+  acknowledgedByCurrentUser: boolean;
+  comments: EntityComment[];
+  student: AlertListItem["student"] & {
+    guardians: Array<{ guardianId: string; guardian: { user: { id: string; name: string; email: string } | null } }>;
+  };
+};
+
+export type StudentOption = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  grade: string;
+  riskLevel: RiskLevel;
+  institution: { id: string; name: string };
+};
+
+export type CaseListItem = {
+  id: string;
+  title: string;
+  summary: string;
+  actionsTaken: string | null;
+  status: CaseStatus;
+  priority: AlertPriority;
+  riskLevel: RiskLevel;
+  openedAt: string;
+  followUpAt: string | null;
+  student: { id: string; firstName: string; lastName: string; grade: string; riskLevel: RiskLevel };
+  assignedTo: { id: string; name: string; email: string } | null;
+  openedBy: { id: string; name: string; email: string } | null;
+  _count: { comments: number; events: number };
+};
+
+export type CaseDetail = CaseListItem & {
+  acknowledgedByCurrentUser: boolean;
+  comments: EntityComment[];
+  student: CaseListItem["student"] & {
+    institution: { id: string; name: string };
+    course: { id: string; name: string } | null;
+  };
+};
+
+export type CasesResponse = {
+  data: CaseListItem[];
+  meta: { total: number; page: number; pageSize: number; pageCount?: number };
 };
 
 export type MonitoringOverview = {

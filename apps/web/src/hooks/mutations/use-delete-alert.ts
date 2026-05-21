@@ -1,19 +1,12 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { updateAlert } from "@/services/alerts/alerts.service";
-import type { AlertListItem } from "@/types/dashboard";
+import { deleteAlert } from "@/services/alerts/alerts.service";
 
-export function useUpdateAlert() {
+export function useDeleteAlert() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      id,
-      payload
-    }: {
-      id: string;
-      payload: Partial<Pick<AlertListItem, "type" | "status" | "priority" | "description">>;
-    }) => updateAlert(id, payload),
+    mutationFn: deleteAlert,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["alerts"] });
       void queryClient.invalidateQueries({ queryKey: ["monitoring"] });

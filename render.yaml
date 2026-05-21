@@ -69,5 +69,6 @@ databases:
     databaseName: edualerta
     user: edualerta
     plan: free
+    region: ohio
     postgresMajorVersion: "16"
     ipAllowList: []

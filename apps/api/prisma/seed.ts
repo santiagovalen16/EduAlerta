@@ -351,13 +351,13 @@ async function main() {
 
   const course91 = await prisma.course.upsert({
     where: { institutionId_name_academicYear: { institutionId: institution.id, name: "9-1", academicYear: 2026 } },
-    update: { grade: "9", teacherId: teacherOrientation.id, deletedAt: null },
+    update: { grade: "9", teacherId: teacherMath.id, deletedAt: null },
     create: {
       name: "9-1",
       grade: "9",
       academicYear: 2026,
       institutionId: institution.id,
-      teacherId: teacherOrientation.id
+      teacherId: teacherMath.id
     }
   });
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
+import { toast } from "sonner";
 import { EmptyState, LoadingState } from "@/components/shared/data-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { AlertStatusBadge, RiskBadge } from "@/components/shared/risk-badge";
@@ -36,20 +37,33 @@ function AlertCreateForm() {
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!studentId || description.trim().length < 12) return;
+    if (!studentId) {
+      toast.error("Selecciona un estudiante antes de registrar la alerta.");
+      return;
+    }
 
-    await createMutation.mutateAsync({
-      studentId,
-      type,
-      priority,
-      description: description.trim(),
-      clientGeneratedId: crypto.randomUUID()
-    });
+    if (description.trim().length < 12) {
+      toast.error("La descripcion debe tener al menos 12 caracteres.");
+      return;
+    }
 
-    setDescription("");
-    setStudentId("");
-    setType("ATTENDANCE");
-    setPriority("MEDIUM");
+    try {
+      await createMutation.mutateAsync({
+        studentId,
+        type,
+        priority,
+        description: description.trim(),
+        clientGeneratedId: crypto.randomUUID()
+      });
+
+      setDescription("");
+      setStudentId("");
+      setType("ATTENDANCE");
+      setPriority("MEDIUM");
+      toast.success("Alerta registrada correctamente.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No fue posible registrar la alerta.");
+    }
   }
 
   return (

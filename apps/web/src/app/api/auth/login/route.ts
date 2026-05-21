@@ -22,7 +22,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: await readApiError(response) }, { status: response.status });
   }
 
-  const result = (await response.json()) as AuthResponse;
+  const text = await response.text();
+  if (!text) {
+    return NextResponse.json({ message: "La API de autenticacion respondio sin contenido." }, { status: 502 });
+  }
+
+  let result: AuthResponse;
+  try {
+    result = JSON.parse(text) as AuthResponse;
+  } catch {
+    return NextResponse.json({ message: "La API de autenticacion devolvio una respuesta invalida." }, { status: 502 });
+  }
+
   const next = NextResponse.json({
     user: result.user,
     redirectTo: result.user.onboardingCompletedAt ? getRoleDashboard(result.user.role) : "/onboarding"

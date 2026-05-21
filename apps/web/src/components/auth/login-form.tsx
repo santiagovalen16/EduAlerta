@@ -38,7 +38,15 @@ export function LoginForm() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(values)
     });
-    const payload = (await response.json()) as { message?: string; redirectTo?: string };
+    const text = await response.text();
+    let payload: { message?: string; redirectTo?: string } = {};
+    if (text) {
+      try {
+        payload = JSON.parse(text) as { message?: string; redirectTo?: string };
+      } catch {
+        payload = { message: text };
+      }
+    }
 
     if (!response.ok) {
       setFormError(payload.message ?? "No fue posible iniciar sesion.");

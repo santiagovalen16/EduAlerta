@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { ForbiddenException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { RoleKey } from "@prisma/client";
 import { getStudentVisibilityWhere } from "../../common/authz/student-scope";
 import { CurrentUserPayload } from "../../common/decorators/current-user.decorator";
@@ -13,6 +13,7 @@ import { UpdateAlertDto } from "./dto/update-alert.dto";
 @Injectable()
 export class AlertsService {
   private static readonly ACKNOWLEDGEMENT_MESSAGE = "Acudiente confirmó recibido.";
+  private readonly logger = new Logger(AlertsService.name);
 
   constructor(
     private readonly prisma: PrismaService,
@@ -133,8 +134,18 @@ export class AlertsService {
       return alert;
     });
 
-    const detail = await this.findById(created.id, user);
-    await this.notifyAlertStakeholders(detail, user, `Se registro una alerta ${created.type.toLowerCase()} con prioridad ${created.priority ?? "MEDIUM"}.`);
+    try {
+      const detail = await this.findById(created.id, user);
+      await this.notifyAlertStakeholders(
+        detail,
+        user,
+        `Se registro una alerta ${created.type.toLowerCase()} con prioridad ${created.priority ?? "MEDIUM"}.`
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Alert ${created.id} was created but post-create notifications failed: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
     return created;
   }
 

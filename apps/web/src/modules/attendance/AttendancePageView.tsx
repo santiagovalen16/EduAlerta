@@ -6,12 +6,23 @@ import type { AuthUser } from "@/lib/auth/types";
 import type { AttendanceResponse, StudentsResponse } from "./types";
 
 export async function AttendancePageView() {
+  const today = new Date().toISOString().slice(0, 10);
   const [user, students, attendance] = await Promise.all([
     serverApiFetch<AuthUser>("/api/auth/me"),
     serverApiFetch<StudentsResponse>("/api/students?page=1&pageSize=100"),
-    serverApiFetch<AttendanceResponse>("/api/attendance?page=1&pageSize=50")
+    serverApiFetch<AttendanceResponse>("/api/attendance?page=1&pageSize=100"),
   ]);
-  const selectable = students.data.filter((item) => item.course).map((item) => ({ id: item.id, name: `${item.firstName} ${item.lastName}`, courseId: item.course?.id ?? null, course: item.course?.name ?? "Sin curso" }));
+  const todayAttendance = await serverApiFetch<AttendanceResponse>(
+    `/api/attendance?page=1&pageSize=100&from=${today}&to=${today}`
+  ).catch(() => ({ data: [] } as AttendanceResponse));
+  const selectable = students.data
+    .filter((item): item is StudentsResponse["data"][number] & { course: { id: string; name: string } } => Boolean(item.course))
+    .map((item) => ({
+      id: item.id,
+      name: `${item.firstName} ${item.lastName}`,
+      courseId: item.course.id,
+      course: item.course.name
+    }));
   const canWriteAttendance = user.permissions.includes("attendance:write");
 
   return (
@@ -22,7 +33,17 @@ export async function AttendancePageView() {
           {canWriteAttendance ? "Registro diario con estados presente, tarde, ausente y justificado." : "Consulta de asistencia de los estudiantes vinculados a tu cuenta."}
         </p>
       </div>
-      {canWriteAttendance ? <AttendanceForm students={selectable} /> : null}
+      {canWriteAttendance ? (
+        <AttendanceForm
+          students={selectable}
+          existingRecords={todayAttendance.data.map((item) => ({
+            studentId: item.student.id,
+            courseId: item.course.id,
+            status: item.status,
+            notes: item.notes
+          }))}
+        />
+      ) : null}
       <OperationTable
         title="Registros recientes"
         columns={["Estudiante", "Curso", "Fecha", "Estado", "Notas"]}

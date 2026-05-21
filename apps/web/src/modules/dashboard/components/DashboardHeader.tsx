@@ -1,4 +1,4 @@
-import { Siren } from "lucide-react";
+import { ClipboardCheck, Siren } from "lucide-react";
 import Link from "next/link";
 import type { Route } from "next";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +30,14 @@ function QuickActions({ permissions }: { permissions: string[] }) {
           <Link href={"/dashboard/alerts" as Route}>
             <Siren className="h-4 w-4" />
             Alertas
+          </Link>
+        </Button>
+      ) : null}
+      {permissions.includes("attendance:write") ? (
+        <Button variant="outline" asChild>
+          <Link href={"/dashboard/attendance" as Route}>
+            <ClipboardCheck className="h-4 w-4" />
+            Asistencia
           </Link>
         </Button>
       ) : null}

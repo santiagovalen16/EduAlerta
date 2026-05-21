@@ -1,4 +1,3 @@
-import { Search } from "lucide-react";
 import {
   getQuickActionRoutes,
   getSidebarRoutes,
@@ -19,8 +18,7 @@ export const navigationItems: NavigationItem[] = routeRegistry.filter((route) =>
 
 export const quickActions: NavigationItem[] = routeRegistry
   .filter((route) => route.quickAction)
-  .filter(hasIcon)
-  .map((route) => (route.href === "/dashboard/monitoring" ? { ...route, icon: Search } : route));
+  .filter(hasIcon);
 
 export function visibleNavigation(role: RoleKey, permissions: string[]) {
   return getSidebarRoutes(role, permissions).filter(hasIcon);

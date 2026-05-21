@@ -30,7 +30,7 @@ export function NotificationsCenter({ preferences }: { preferences?: UserPrefere
           ) : notificationsQuery.data?.length ? (
             <div className="space-y-3">
               {notificationsQuery.data.map((notification) => {
-                const href = (notification.alertId ? "/dashboard/alerts" : "/dashboard/monitoring") as Route;
+                const href = "/dashboard/alerts" as Route;
                 const isRead = Boolean(notification.readAt);
 
                 return (

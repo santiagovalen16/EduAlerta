@@ -1,5 +1,5 @@
-import { CasesPageView } from "@/modules/cases/CasesPageView";
+import { redirect } from "next/navigation";
 
 export default function CasesPage() {
-  return <CasesPageView />;
+  redirect("/dashboard/alerts");
 }

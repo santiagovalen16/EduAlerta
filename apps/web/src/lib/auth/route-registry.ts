@@ -5,7 +5,6 @@ import {
   Building2,
   ChartNoAxesCombined,
   ClipboardCheck,
-  ClipboardList,
   GraduationCap,
   History,
   LayoutDashboard,
@@ -14,7 +13,6 @@ import {
   ShieldCheck,
   Siren,
   User,
-  Users,
   type LucideIcon
 } from "lucide-react";
 import type { Permission, Role } from "@/types/api";
@@ -54,11 +52,9 @@ export const routeRegistry: AppRoute[] = [
   { href: "/dashboard/guardian", label: "Mis hijos", icon: Users, roles: ["ACUDIENTE", "SUPER_ADMIN"], sidebar: true, authenticated: true },
   { href: "/dashboard/student", label: "Mi rendimiento", icon: GraduationCap, roles: ["ESTUDIANTE", "SUPER_ADMIN"], sidebar: true, authenticated: true },
   { href: "/dashboard/alerts", label: "Alertas", icon: Siren, permission: "alert:read", sidebar: true, quickAction: true, authenticated: true },
-  { href: "/dashboard/cases", label: "Casos", icon: ClipboardList, permission: "case:read", sidebar: true, authenticated: true },
   { href: "/dashboard/attendance", label: "Asistencia", icon: ClipboardCheck, permission: "attendance:read", sidebar: true, authenticated: true },
   { href: "/dashboard/observations", label: "Observador", icon: BookOpen, permission: "observation:read", sidebar: true, authenticated: true },
   { href: "/dashboard/incidents", label: "Convivencia", icon: AlertTriangle, permission: "incident:read", sidebar: true, authenticated: true },
-  { href: "/dashboard/monitoring", label: "Seguimiento", icon: Users, permission: "student:read", sidebar: true, quickAction: true, authenticated: true },
   { href: "/dashboard/territorial", label: "Analitica territorial", icon: Map, permission: "dashboard:territory:read", sidebar: true, authenticated: true },
   { href: "/dashboard/activity", label: "Actividad", icon: History, sidebar: true, authenticated: true },
   { href: "/dashboard/reports", label: "Reportes", icon: ChartNoAxesCombined, permission: "report:export", sidebar: true, authenticated: true },
@@ -77,8 +73,7 @@ export const routeRegistry: AppRoute[] = [
 ];
 
 export const quickActionOverrides: Record<string, string> = {
-  "/dashboard/alerts": "Crear o revisar alerta",
-  "/dashboard/monitoring": "Buscar estudiante"
+  "/dashboard/alerts": "Crear o revisar alerta"
 };
 
 export function getRoleDashboard(role: string | undefined) {

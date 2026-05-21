@@ -60,9 +60,30 @@ export class AlertsRepository {
     return this.prisma.alert.findFirst({
       where: { id, deletedAt: null, student: visibility },
       include: {
-        student: { include: { course: true, guardians: { where: { deletedAt: null }, include: { guardian: { include: { user: true } } } } } },
+        student: {
+          include: {
+            institution: {
+              include: {
+                municipality: true
+              }
+            },
+            course: {
+              include: {
+                teacherAssignments: {
+                  where: { deletedAt: null },
+                  include: { teacher: { include: { user: { select: { id: true, name: true, email: true } } } } }
+                }
+              }
+            },
+            guardians: { where: { deletedAt: null }, include: { guardian: { include: { user: true } } } }
+          }
+        },
         createdBy: { select: { id: true, name: true, email: true } },
-        teacher: { include: { user: { select: { id: true, name: true, email: true } } } }
+        teacher: { include: { user: { select: { id: true, name: true, email: true } } } },
+        comments: {
+          where: { deletedAt: null },
+          orderBy: { createdAt: "desc" }
+        }
       }
     });
   }

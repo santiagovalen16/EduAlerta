@@ -1,5 +1,5 @@
-import { MonitoringView } from "@/components/monitoring/monitoring-view";
+import { redirect } from "next/navigation";
 
 export default function DashboardMonitoringPage() {
-  return <MonitoringView />;
+  redirect("/dashboard/alerts");
 }

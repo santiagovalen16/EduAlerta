@@ -21,15 +21,25 @@ export function getStudentVisibilityWhere(user: CurrentUserPayload): Prisma.Stud
   if (user.role === RoleKey.DOCENTE) {
     return {
       course: {
-        teacherAssignments: {
-          some: {
-            deletedAt: null,
+        OR: [
+          {
+            teacherAssignments: {
+              some: {
+                deletedAt: null,
+                teacher: {
+                  deletedAt: null,
+                  userId: user.sub
+                }
+              }
+            }
+          },
+          {
             teacher: {
               deletedAt: null,
               userId: user.sub
             }
           }
-        }
+        ]
       }
     };
   }

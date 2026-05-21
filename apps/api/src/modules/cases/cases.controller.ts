@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { CurrentUser, CurrentUserPayload } from "../../common/decorators/current-user.decorator";
 import { Permissions } from "../../common/decorators/permissions.decorator";
@@ -51,5 +51,17 @@ export class CasesController {
   @Permissions("case:update")
   comment(@Param("id") id: string, @Body() dto: CreateCaseCommentDto, @CurrentUser() user: CurrentUserPayload) {
     return this.casesService.comment(id, dto, user);
+  }
+
+  @Delete(":id")
+  @Permissions("case:update")
+  remove(@Param("id") id: string, @CurrentUser() user: CurrentUserPayload) {
+    return this.casesService.remove(id, user);
+  }
+
+  @Post(":id/acknowledge")
+  @Permissions("case:read")
+  acknowledge(@Param("id") id: string, @CurrentUser() user: CurrentUserPayload) {
+    return this.casesService.acknowledge(id, user);
   }
 }

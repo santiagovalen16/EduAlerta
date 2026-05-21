@@ -38,4 +38,27 @@ export class NotificationsService {
       data: { userId, title: input.title, body: input.body, alertId: input.alertId, channel: NotificationChannel.IN_APP }
     });
   }
+
+  createForGuardian(guardianId: string, userId: string | null, input: { title: string; body: string; alertId?: string }) {
+    return this.prisma.notification.create({
+      data: {
+        guardianId,
+        userId,
+        title: input.title,
+        body: input.body,
+        alertId: input.alertId,
+        channel: NotificationChannel.IN_APP
+      }
+    });
+  }
+
+  async createMany(input: Array<{ userId?: string | null; guardianId?: string | null; title: string; body: string; alertId?: string }>) {
+    for (const item of input) {
+      if (item.guardianId) {
+        await this.createForGuardian(item.guardianId, item.userId ?? null, item);
+      } else if (item.userId) {
+        await this.createForUser(item.userId, item);
+      }
+    }
+  }
 }

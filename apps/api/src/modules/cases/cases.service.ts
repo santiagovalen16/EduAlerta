@@ -4,6 +4,7 @@ import { assertInstitutionAccess, getInstitutionScope } from "../../common/authz
 import { getStudentVisibilityWhere } from "../../common/authz/student-scope";
 import { CurrentUserPayload } from "../../common/decorators/current-user.decorator";
 import { PrismaService } from "../../database/prisma.service";
+import { NotificationsService } from "../notifications/notifications.service";
 import { CreateCaseCommentDto } from "./dto/create-case-comment.dto";
 import { CreateCaseDto } from "./dto/create-case.dto";
 import { QueryCasesDto } from "./dto/query-cases.dto";
@@ -11,7 +12,62 @@ import { UpdateCaseDto } from "./dto/update-case.dto";
 
 @Injectable()
 export class CasesService {
-  constructor(private readonly prisma: PrismaService) {}
+  private static readonly ACKNOWLEDGEMENT_MESSAGE = "Acudiente confirmó recibido.";
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService
+  ) {}
+
+  private async notifyCaseStakeholders(id: string, user: CurrentUserPayload, message: string) {
+    const actor = await this.prisma.user.findUnique({
+      where: { id: user.sub },
+      select: { name: true, role: { select: { key: true } } }
+    });
+    const title = actor?.role.key === RoleKey.RECTOR ? "Respuesta del rector en seguimiento" : "Actualizacion de seguimiento";
+    const body = `${actor?.name ?? "Equipo directivo"}: ${message}`;
+    const record = await this.prisma.monitoringCase.findUnique({
+      where: { id },
+      include: {
+        student: {
+          include: {
+            guardians: { where: { deletedAt: null }, include: { guardian: { include: { user: { select: { id: true } } } } } },
+            course: {
+              include: {
+                teacherAssignments: {
+                  where: { deletedAt: null },
+                  include: { teacher: { include: { user: { select: { id: true } } } } }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!record) return;
+
+    const recipients = new Map<string, { userId?: string | null; guardianId?: string | null; title: string; body: string }>();
+
+    for (const assignment of record.student.course?.teacherAssignments ?? []) {
+      const teacherUserId = assignment.teacher.user.id;
+      if (teacherUserId === user.sub) continue;
+      recipients.set(`user:${teacherUserId}`, { userId: teacherUserId, title, body });
+    }
+
+    for (const relation of record.student.guardians) {
+      const guardianUserId = relation.guardian.user?.id ?? null;
+      if (guardianUserId === user.sub) continue;
+      recipients.set(`guardian:${relation.guardianId}`, {
+        guardianId: relation.guardianId,
+        userId: guardianUserId,
+        title,
+        body
+      });
+    }
+
+    await this.notificationsService.createMany([...recipients.values()]);
+  }
 
   async findMany(query: QueryCasesDto, user: CurrentUserPayload) {
     const institutionId = user.role === RoleKey.ACUDIENTE ? undefined : getInstitutionScope(user);
@@ -60,12 +116,18 @@ export class CasesService {
         student: { include: { institution: { select: { id: true, name: true } }, course: true } },
         assignedTo: { select: { id: true, name: true, email: true } },
         openedBy: { select: { id: true, name: true, email: true } },
-        comments: { where: { deletedAt: null }, include: { author: { select: { id: true, name: true } } }, orderBy: { createdAt: "desc" } }
+        comments: { where: { deletedAt: null }, include: { author: { select: { id: true, name: true } } }, orderBy: { createdAt: "desc" } },
+        _count: { select: { comments: true, events: true } }
       }
     });
     if (!record) throw new NotFoundException("Monitoring case not found.");
     assertInstitutionAccess(user, record.institutionId);
-    return record;
+    return {
+      ...record,
+      acknowledgedByCurrentUser: record.comments.some(
+        (comment) => comment.authorId === user.sub && comment.body === CasesService.ACKNOWLEDGEMENT_MESSAGE
+      )
+    };
   }
 
   async create(dto: CreateCaseDto, user: CurrentUserPayload) {
@@ -149,11 +211,85 @@ export class CasesService {
 
   async comment(id: string, dto: CreateCaseCommentDto, user: CurrentUserPayload) {
     await this.findById(id, user);
-    return this.prisma.$transaction(async (tx) => {
+    const comment = await this.prisma.$transaction(async (tx) => {
       const comment = await tx.monitoringCaseComment.create({ data: { caseId: id, authorId: user.sub, body: dto.body } });
       await tx.monitoringCaseEvent.create({ data: { caseId: id, actorId: user.sub, type: CaseEventType.COMMENTED, body: dto.body } });
       await tx.auditLog.create({ data: { actorId: user.sub, action: AuditAction.CASE_COMMENTED, entityType: "MonitoringCase", entityId: id, metadata: { commentId: comment.id } } });
       return comment;
+    });
+    await this.notifyCaseStakeholders(id, user, dto.body);
+    return comment;
+  }
+
+  async acknowledge(id: string, user: CurrentUserPayload) {
+    if (user.role !== RoleKey.ACUDIENTE) {
+      throw new ForbiddenException("Only guardians can acknowledge follow-ups.");
+    }
+
+    const current = await this.findById(id, user);
+    if (current.acknowledgedByCurrentUser) {
+      return { ok: true, alreadyAcknowledged: true };
+    }
+
+    const comment = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.monitoringCaseComment.create({
+        data: { caseId: id, authorId: user.sub, body: CasesService.ACKNOWLEDGEMENT_MESSAGE }
+      });
+      await tx.monitoringCaseEvent.create({
+        data: { caseId: id, actorId: user.sub, type: CaseEventType.COMMENTED, body: CasesService.ACKNOWLEDGEMENT_MESSAGE }
+      });
+      await tx.auditLog.create({
+        data: {
+          actorId: user.sub,
+          action: AuditAction.CASE_COMMENTED,
+          entityType: "MonitoringCase",
+          entityId: id,
+          metadata: { acknowledged: true, commentId: created.id }
+        }
+      });
+      return created;
+    });
+
+    await this.notifyCaseStakeholders(id, user, CasesService.ACKNOWLEDGEMENT_MESSAGE);
+    return { ok: true, alreadyAcknowledged: false, comment };
+  }
+
+  async remove(id: string, user: CurrentUserPayload) {
+    const current = await this.findById(id, user);
+    return this.prisma.$transaction(async (tx) => {
+      const deleted = await tx.monitoringCase.update({
+        where: { id },
+        data: {
+          deletedAt: new Date(),
+          closedAt: current.closedAt ?? new Date(),
+          status: current.status === MonitoringCaseStatus.CLOSED ? current.status : MonitoringCaseStatus.CLOSED
+        }
+      });
+
+      await tx.monitoringCaseEvent.create({
+        data: {
+          caseId: id,
+          actorId: user.sub,
+          type: CaseEventType.CLOSED,
+          fromStatus: current.status,
+          toStatus: MonitoringCaseStatus.CLOSED,
+          body: "Caso eliminado logicamente"
+        }
+      });
+
+      await tx.auditLog.create({
+        data: {
+          actorId: user.sub,
+          action: AuditAction.CASE_UPDATED,
+          entityType: "MonitoringCase",
+          entityId: id,
+          before: current,
+          after: deleted,
+          metadata: { deleted: true }
+        }
+      });
+
+      return deleted;
     });
   }
 

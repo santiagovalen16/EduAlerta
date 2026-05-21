@@ -40,15 +40,27 @@ export class AttendanceService {
     assertInstitutionAccess(user, student.institutionId);
     if (student.courseId !== dto.courseId) throw new NotFoundException("Student is not enrolled in the selected course.");
     if (user.role === RoleKey.DOCENTE) {
-      const assignment = await this.prisma.teacherAssignment.findFirst({
-        where: {
-          deletedAt: null,
-          courseId: dto.courseId,
-          ...(dto.subjectId ? { subjectId: dto.subjectId } : {}),
-          teacher: { userId: user.sub, deletedAt: null }
-        }
-      });
-      if (!assignment) throw new NotFoundException("Teacher assignment not found for selected course and subject.");
+      const [assignment, titularCourse] = await this.prisma.$transaction([
+        this.prisma.teacherAssignment.findFirst({
+          where: {
+            deletedAt: null,
+            courseId: dto.courseId,
+            ...(dto.subjectId ? { subjectId: dto.subjectId } : {}),
+            teacher: { userId: user.sub, deletedAt: null }
+          }
+        }),
+        this.prisma.course.findFirst({
+          where: {
+            id: dto.courseId,
+            deletedAt: null,
+            teacher: { userId: user.sub, deletedAt: null }
+          },
+          select: { id: true }
+        })
+      ]);
+      if (!assignment && !titularCourse) {
+        throw new NotFoundException("Teacher assignment not found for selected course.");
+      }
     }
 
     const record = await this.prisma.attendance.upsert({

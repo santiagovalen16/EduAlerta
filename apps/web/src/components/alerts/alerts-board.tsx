@@ -161,6 +161,8 @@ function AlertDetail({
   }, [detailQuery.data]);
 
   const alert = detailQuery.data as AlertDetail | undefined;
+  const institutionName = alert?.student.institution?.name ?? "Institucion no disponible";
+  const createdByName = alert?.createdBy?.name ?? "Usuario no disponible";
 
   async function saveChanges() {
     if (!alert) return;
@@ -278,8 +280,8 @@ function AlertDetail({
           />
         </div>
         <div className="rounded-md border p-4 text-sm text-muted-foreground">
-          <p>Creada por {alert.createdBy.name}</p>
-          <p>Institucion: {alert.student.institution.name}</p>
+          <p>Creada por {createdByName}</p>
+          <p>Institucion: {institutionName}</p>
           <p>Registrada el {new Date(alert.createdAt).toLocaleDateString("es-CO")}</p>
         </div>
         <div className="rounded-md border p-4">

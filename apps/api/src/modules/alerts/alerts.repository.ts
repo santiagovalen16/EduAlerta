@@ -62,6 +62,11 @@ export class AlertsRepository {
       include: {
         student: {
           include: {
+            institution: {
+              include: {
+                municipality: true
+              }
+            },
             course: {
               include: {
                 teacherAssignments: {

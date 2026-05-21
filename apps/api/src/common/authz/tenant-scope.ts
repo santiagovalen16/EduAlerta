@@ -9,6 +9,7 @@ export function getInstitutionScope(user: CurrentUserPayload) {
 }
 
 export function assertInstitutionAccess(user: CurrentUserPayload, institutionId: string) {
+  if (user.role === RoleKey.ACUDIENTE) return;
   const scope = getInstitutionScope(user);
   if (scope && scope !== institutionId) throw new ForbiddenException("Institution access denied.");
 }

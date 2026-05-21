@@ -162,6 +162,7 @@ function CaseDetail({ caseId, onClose }: { caseId: string; onClose: () => void }
   const [status, setStatus] = useState<CaseStatus>("NEW");
   const [followUpAt, setFollowUpAt] = useState("");
   const [response, setResponse] = useState("");
+  const errorMessage = detailQuery.error instanceof Error ? detailQuery.error.message : null;
 
   const item = detailQuery.data;
 
@@ -212,7 +213,11 @@ function CaseDetail({ caseId, onClose }: { caseId: string; onClose: () => void }
   return (
     <aside className="fixed inset-y-0 right-0 z-40 w-full max-w-xl overflow-y-auto border-l bg-background p-6 shadow-xl">
       {detailQuery.isLoading ? <LoadingState rows={6} /> : null}
-      {!detailQuery.isLoading && !item ? <p className="text-sm text-destructive">No fue posible cargar el seguimiento.</p> : null}
+      {!detailQuery.isLoading && !item ? (
+        <p className="text-sm text-destructive">
+          {errorMessage ? `No fue posible cargar el seguimiento: ${errorMessage}` : "No fue posible cargar el seguimiento."}
+        </p>
+      ) : null}
       {item ? (
         <>
       <div className="flex items-start justify-between gap-4">

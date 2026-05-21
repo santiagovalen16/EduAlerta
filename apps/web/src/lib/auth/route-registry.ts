@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   Siren,
   User,
+  Users,
   type LucideIcon
 } from "lucide-react";
 import type { Permission, Role } from "@/types/api";

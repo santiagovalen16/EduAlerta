@@ -22,5 +22,14 @@ export async function browserApiClient<T>(path: string, init?: RequestInit): Pro
     throw new ApiClientError(message || `Request failed with ${response.status}`, response.status);
   }
 
-  return response.json() as Promise<T>;
+  const text = await response.text();
+  if (!text) {
+    throw new ApiClientError(`Empty response from ${path}`, response.status);
+  }
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new ApiClientError(`Invalid JSON response from ${path}: ${text.slice(0, 180)}`, response.status);
+  }
 }
